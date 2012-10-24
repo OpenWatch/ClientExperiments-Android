@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/137/trunk/src/net/majorkernelpanic/rtp
+END
+AMRNBPacketizer.java
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/!svn/ver/132/trunk/src/net/majorkernelpanic/rtp/AMRNBPacketizer.java
+END
+AACADTSPacketizer.java
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/!svn/ver/132/trunk/src/net/majorkernelpanic/rtp/AACADTSPacketizer.java
+END
+H263Packetizer.java
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/137/trunk/src/net/majorkernelpanic/rtp/H263Packetizer.java
+END
+AbstractPacketizer.java
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/!svn/ver/132/trunk/src/net/majorkernelpanic/rtp/AbstractPacketizer.java
+END
+H264Packetizer.java
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/svn/!svn/ver/132/trunk/src/net/majorkernelpanic/rtp/H264Packetizer.java
+END
+RtpSocket.java
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/!svn/ver/132/trunk/src/net/majorkernelpanic/rtp/RtpSocket.java
+END

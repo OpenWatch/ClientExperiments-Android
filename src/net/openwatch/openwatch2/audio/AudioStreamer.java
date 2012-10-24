@@ -1,4 +1,4 @@
-package net.openwatch.openwatch2.stream;
+package net.openwatch.openwatch2.audio;
 
 import java.io.IOException;
 import java.net.InetAddress;

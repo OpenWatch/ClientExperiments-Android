@@ -3,9 +3,9 @@ package net.openwatch.openwatch2;
 import java.io.File;
 import java.util.Date;
 
+import net.openwatch.openwatch2.audio.AudioStreamer;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
-import net.openwatch.openwatch2.stream.AudioStreamer;
 import net.openwatch.openwatch2.video.VideoRecorder;
 import android.os.Build;
 import android.os.Bundle;
@@ -53,6 +53,19 @@ public class MainActivity extends Activity {
 
 			}
 
+		});
+		
+		Button read_output_stream_btn = (Button) findViewById(R.id.read_output_stream_btn);
+		read_output_stream_btn.setEnabled(false);
+		read_output_stream_btn.setOnClickListener(new OnClickListener(){
+
+			@Override
+			public void onClick(View v) {
+				if(VideoRecorder.is_recording){
+				}
+				
+			}
+			
 		});
 	}
 

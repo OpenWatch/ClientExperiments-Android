@@ -31,5 +31,16 @@
         android:text="Start Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
+    
+    <Button
+        android:id="@+id/read_output_stream_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/record_video_btn"
+        android:layout_centerInParent="true"
+        android:layout_marginTop="20dp"
+        android:text="Read Video Stream"
+        android:textSize="25dp"
+        tools:context=".MainActivity" />
 
 </RelativeLayout>
