@@ -22,6 +22,12 @@ public class VideoRecorder {
 	
 	private static FileOutputStream camera_output_stream;
 	
+	/** 
+	 * Begin recording video the the output_file specified.
+	 * @param camera_surface_view the SurfaceView to attach the camera preview to
+	 * @param output_file the destination of the recording. This file will be created if it doesn't
+	 * all ready exist.
+	 */
 	public static void startRecording(SurfaceView camera_surface_view, File output_file){
 		
 		//camera_output_stream = getOutputStreamFromFile(output_file);
