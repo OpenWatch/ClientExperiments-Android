@@ -81,7 +81,7 @@ public class MainActivity extends Activity {
 				if(VideoSoftwareRecorder.is_recording){
 					VideoSoftwareRecorder.stopRecording();
 					record_hw_video_btn.setEnabled(true);
-					((Button) v).setText("Start SW Recording Video");
+					((Button) v).setText("Start SW Video Recording");
 				}
 				else{
 					String video_filename = String.valueOf(new Date().getTime()) + "_AV.mp4";
@@ -95,7 +95,7 @@ public class MainActivity extends Activity {
 							video_output_file);
 					
 					record_hw_video_btn.setEnabled(false);
-					((Button) v).setText("Stop SW Recording Video");
+					((Button) v).setText("Stop SW Video Recording");
 				}
 				
 			}

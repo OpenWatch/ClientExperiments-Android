@@ -15,6 +15,11 @@ public class VideoSoftwareRecorder {
 	public static Camera camera;
 	
 	public static boolean is_recording = false;
+	
+	// Native methods
+	public static native void initializeOutputFile(String filename);
+	public static native void encodeFrame(byte[] frame);
+	public static native void finalizeFile();
 
 	public static void startRecording(SurfaceView camera_surface_view,
 			File output_file) {
