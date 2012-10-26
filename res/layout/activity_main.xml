@@ -22,24 +22,24 @@
     -->
 
     <Button
-        android:id="@+id/record_video_btn"
+        android:id="@+id/record_hw_video_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/camera_surface_view"
         android:layout_centerInParent="true"
         android:layout_marginTop="20dp"
-        android:text="Start Video Recording"
+        android:text="Start HW Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
     
     <Button
-        android:id="@+id/read_output_stream_btn"
+        android:id="@+id/record_sw_video_btn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/record_video_btn"
+        android:layout_below="@id/record_hw_video_btn"
         android:layout_centerInParent="true"
         android:layout_marginTop="20dp"
-        android:text="Read Video Stream"
+        android:text="Start SW Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
 

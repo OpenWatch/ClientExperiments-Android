@@ -3,11 +3,12 @@ package net.openwatch.openwatch2;
 import java.io.File;
 import java.util.Date;
 
-import net.openwatch.openwatch2.audio.AudioRecorder;
+import net.openwatch.openwatch2.audio.AudioHardwareRecorder;
 import net.openwatch.openwatch2.audio.AudioStreamer;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
-import net.openwatch.openwatch2.video.VideoRecorder;
+import net.openwatch.openwatch2.video.VideoHardwareRecorder;
+import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.SyncStateContract.Constants;
@@ -20,6 +21,9 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 
 public class MainActivity extends Activity {
+	
+	private Button record_hw_video_btn;
+	private Button record_sw_video_btn;
 
 	@SuppressLint("NewApi")
 	@Override
@@ -31,47 +35,67 @@ public class MainActivity extends Activity {
 			this.getActionBar().setTitle("OW Tech Demo");
 		}
 
-		Button record_video_btn = (Button) findViewById(R.id.record_video_btn);
-		record_video_btn.setOnClickListener(new OnClickListener() {
+		record_hw_video_btn = (Button) findViewById(R.id.record_hw_video_btn);
+		record_hw_video_btn.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
-				if (VideoRecorder.is_recording) {
-					VideoRecorder.stopRecording();
-					//AudioRecorder.stopRecording();
-					((Button) v).setText("Start Recording Video");
+				if (VideoHardwareRecorder.is_recording) {
+					VideoHardwareRecorder.stopRecording();
+					//AudioHardwareRecorder.stopRecording();
+					record_sw_video_btn.setEnabled(true);
+					((Button) v).setText("Start HW Recording Video");
 				} else {
 					String video_filename = String.valueOf(new Date().getTime()) + "_AV.mp4";
 					File video_output_file = new File(
 							FileUtils.getExternalStorage(MainActivity.this,
 									OWConstants.recording_directory), video_filename);
 
-					VideoRecorder.startRecording(
+					VideoHardwareRecorder.startRecording(
 							(SurfaceView) MainActivity.this
 									.findViewById(R.id.camera_surface_view),
 							video_output_file);
 					
 					// See if an audio recording can take place simultaneously
 					// nope. Throws IllegalStateException
+					// Even when a different hardware encoder is used
+					// i.e: VideoRecorder using AAC audio hardware and AudioRecorder using AMR hardware
 					/*
-					String audio_filename = String.valueOf(new Date().getTime()) + "_A.mp4";
+					String audio_filename = String.valueOf(new Date().getTime()) + "_A.3gpp";
 					File audio_output_file = new File(FileUtils.getExternalStorage(MainActivity.this, OWConstants.recording_directory), audio_filename);
 					AudioRecorder.startRecording(audio_output_file);
 					*/
-					((Button) v).setText("Stop Recording Video");
+					record_sw_video_btn.setEnabled(false);
+					((Button) v).setText("Stop HW Recording Video");
 				}
 
 			}
 
 		});
 		
-		Button read_output_stream_btn = (Button) findViewById(R.id.read_output_stream_btn);
-		read_output_stream_btn.setEnabled(false);
-		read_output_stream_btn.setOnClickListener(new OnClickListener(){
+		record_sw_video_btn = (Button) findViewById(R.id.record_sw_video_btn);
+		record_sw_video_btn.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
-				if(VideoRecorder.is_recording){
+				if(VideoSoftwareRecorder.is_recording){
+					VideoSoftwareRecorder.stopRecording();
+					record_hw_video_btn.setEnabled(true);
+					((Button) v).setText("Start SW Recording Video");
+				}
+				else{
+					String video_filename = String.valueOf(new Date().getTime()) + "_AV.mp4";
+					File video_output_file = new File(
+							FileUtils.getExternalStorage(MainActivity.this,
+									OWConstants.recording_directory), video_filename);
+
+					VideoSoftwareRecorder.startRecording(
+							(SurfaceView) MainActivity.this
+									.findViewById(R.id.camera_surface_view),
+							video_output_file);
+					
+					record_hw_video_btn.setEnabled(false);
+					((Button) v).setText("Stop SW Recording Video");
 				}
 				
 			}
