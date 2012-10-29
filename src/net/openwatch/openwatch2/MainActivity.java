@@ -9,6 +9,7 @@ import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
 import net.openwatch.openwatch2.video.VideoHardwareRecorder;
 import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
+import net.openwatch.openwatch2.video.ffmpegTest;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.SyncStateContract.Constants;
@@ -101,6 +102,20 @@ public class MainActivity extends Activity {
 			}
 			
 		});
+		
+		Button test_ffmpeg_btn = (Button) findViewById(R.id.test_ffmpeg_btn);
+		test_ffmpeg_btn.setOnClickListener(new OnClickListener(){
+
+			@Override
+			public void onClick(View v) {
+				String test_filename = String.valueOf(new Date().getTime()) + "_V_TEST.mp4";
+				ffmpegTest.testFFMPEG(test_filename);
+				
+			}
+			
+		});
+		
+		
 	}
 
 	@Override

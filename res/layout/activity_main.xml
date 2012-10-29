@@ -42,5 +42,16 @@
         android:text="Start SW Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
+    
+    <Button
+        android:id="@+id/test_ffmpeg_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/record_sw_video_btn"
+        android:layout_centerInParent="true"
+        android:layout_marginTop="20dp"
+        android:text="Test FFMPEG"
+        android:textSize="25dp"
+        tools:context=".MainActivity" />
 
 </RelativeLayout>

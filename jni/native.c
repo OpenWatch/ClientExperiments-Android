@@ -53,141 +53,103 @@ AVFrame *pFrame;
 AVPacket pkt;
 
 
-void Java_net_openwatch_openwatch2_VideoSoftwareRecorder_initializeOutputFile(JNIEnv * env, jobject this, jstring filename) {
-	// expects String filename
+void Java_net_openwatch_openwatch2_video_ffmpegTest_testFFMPEG(JNIEnv * env, jobject this, jstring filename){
+	AVCodec *codec;
+	AVCodecContext *c= NULL;
+	int i, out_size, x, y, outbuf_size;
+	FILE *f;
+	AVFrame *picture;
+	uint8_t *outbuf;
+	int had_output=0;
 
-	printf("Encode video file %s\n", filename);
+	//printf("Encode video file %s\n", filename);
 
-	int codec_id = AV_CODEC_ID_H264;
+	LOGI("method called!");
+/*
+	int codec_id = CODEC_ID_H264;
 
-	/* find the target video encoder */
-	pCodec = avcodec_find_encoder(codec_id);
-	if (!pCodec) {
-		fprintf(stderr, "Codec not found\n");
+	codec = avcodec_find_encoder(codec_id);
+	if (!codec) {
+		//fprintf(stderr, "codec not found\n");
 		exit(1);
 	}
 
-	pCodecCtx = avcodec_alloc_context3(pCodec);
+	c = avcodec_alloc_context3(codec);
+	picture= avcodec_alloc_frame();
 
-	/* put sample parameters */
-	pCodecCtx->bit_rate = 400000;
-	/* resolution must be a multiple of two */
-	pCodecCtx->width = 352;
-	pCodecCtx->height = 288;
-	/* frames per second */
-	pCodecCtx->time_base= (AVRational){1,25};
-	pCodecCtx->gop_size = 10; /* emit one intra frame every ten frames */
-	pCodecCtx->max_b_frames=1;
-	pCodecCtx->pix_fmt = PIX_FMT_YUV420P;
+	c->bit_rate = 400000;
+	c->width = 352;
+	c->height = 288;
+	c->time_base= (AVRational){1,25};
+	c->gop_size = 10;
+	c->max_b_frames=1;
+	c->pix_fmt = PIX_FMT_YUV420P;
 
-	if(codec_id == AV_CODEC_ID_H264)
-		av_opt_set(pCodecCtx->priv_data, "preset", "slow", 0);
+	if(codec_id == CODEC_ID_H264)
+		av_opt_set(c->priv_data, "preset", "slow", 0);
 
-	/* open it */
-	if (avcodec_open2(pCodecCtx, pCodec, NULL) < 0) {
-		fprintf(stderr, "Could not open codec\n");
+	if (avcodec_open2(c, codec, NULL) < 0) {
+		//fprintf(stderr, "could not open codec\n");
 		exit(1);
 	}
 
-	pFile = fopen(filename, "wb");
-	if (!pFile) {
-		fprintf(stderr, "Could not open %s\n", filename);
+	f = fopen(filename, "wb");
+	if (!f) {
+		//fprintf(stderr, "could not open %s\n", filename);
 		exit(1);
 	}
 
-	pFrame = avcodec_alloc_frame();
-	if (!pFrame) {
-		fprintf(stderr, "Could not allocate video frame\n");
-		exit(1);
-	}
-	pFrame->format = pCodecCtx->pix_fmt;
-	pFrame->width  = pCodecCtx->width;
-	pFrame->height = pCodecCtx->height;
+	outbuf_size = 100000 + 12*c->width*c->height;
+	outbuf = malloc(outbuf_size);
 
-	/* the image can be allocated by any means and av_image_alloc() is
-	 * just the most convenient way if av_malloc() is to be used */
-	ret = av_image_alloc(pFrame->data, pFrame->linesize, pCodecCtx->width, pCodecCtx->height,
-			pCodecCtx->pix_fmt, 32);
-	if (ret < 0) {
-		fprintf(stderr, "Could not allocate raw picture buffer\n");
-		exit(1);
+
+	av_image_alloc(picture->data, picture->linesize,
+				   c->width, c->height, c->pix_fmt, 1);
+
+	for(i=0;i<25;i++) {
+		//fflush(stdout);
+
+		for(y=0;y<c->height;y++) {
+			for(x=0;x<c->width;x++) {
+				picture->data[0][y * picture->linesize[0] + x] = x + y + i * 3;
+			}
+		}
+
+		for(y=0;y<c->height/2;y++) {
+			for(x=0;x<c->width/2;x++) {
+				picture->data[1][y * picture->linesize[1] + x] = 128 + y + i * 2;
+				picture->data[2][y * picture->linesize[2] + x] = 64 + x + i * 5;
+			}
+		}
+
+		out_size = avcodec_encode_video(c, outbuf, outbuf_size, picture);
+		had_output |= out_size;
+		//printf("encoding frame %3d (size=%5d)\n", i, out_size);
+		fwrite(outbuf, 1, out_size, f);
 	}
 
+	for(; out_size || !had_output; i++) {
+		//fflush(stdout);
+
+		out_size = avcodec_encode_video(c, outbuf, outbuf_size, NULL);
+		had_output |= out_size;
+		printf("write frame %3d (size=%5d)\n", i, out_size);
+		fwrite(outbuf, 1, out_size, f);
+	}
+
+	outbuf[0] = 0x00;
+	outbuf[1] = 0x00;
+	outbuf[2] = 0x01;
+	outbuf[3] = 0xb7;
+	fwrite(outbuf, 1, 4, f);
+	fclose(f);
+	free(outbuf);
+
+	avcodec_close(c);
+	av_free(c);
+	av_free(picture->data[0]);
+	av_free(picture);
+	//printf("\n");
+
+	 */
 }
-
-void Java_net_openwatch_openwatch2_VideoSoftwareRecorder_encodeFrame(JNIEnv * env, jobject this) {
-	/* encode 1 frame of video */
-
-	av_init_packet(&pkt);
-	pkt.data = NULL;    // packet data will be allocated by the encoder
-	pkt.size = 0;
-
-	fflush(stdout);
-
-	int x, y;
-
-	/* Y */
-	for (y = 0; y < pCodecCtx->height; y++) {
-		for (x = 0; x < pCodecCtx->width; x++) {
-			pFrame->data[0][y * pFrame->linesize[0] + x] = x + y + frameNumber * 3;
-		}
-	}
-
-	/* Cb and Cr */
-	for (y = 0; y < pCodecCtx->height / 2; y++) {
-		for (x = 0; x < pCodecCtx->width / 2; x++) {
-			pFrame->data[1][y * pFrame->linesize[1] + x] = 128 + y + frameNumber * 2;
-			pFrame->data[2][y * pFrame->linesize[2] + x] = 64 + x + frameNumber * 5;
-		}
-	}
-
-	pFrame->pts = frameNumber;
-
-	/* encode the image */
-	ret = avcodec_encode_video2(pCodecCtx, &pkt, pFrame, &got_output);
-	if (ret < 0) {
-		// fprintf(stderr, "Error encoding frame\n");
-		LOGE("Error encoding frame");
-		exit(1);
-	}
-
-	if (got_output) {
-		printf("Write frame %3d (size=%5d)\n", frameNumber, pkt.size);
-		fwrite(pkt.data, 1, pkt.size, pFile);
-		av_free_packet(&pkt);
-	}
-
-}
-
-void Java_net_openwatch_openwatch2_VideoSoftwareRecorder_finalizeFile(JNIEnv * env, jobject this) {
-
-	uint8_t endcode[] = { 0, 0, 1, 0xb7 };
-
-	/* get the delayed frames */
-	// what's going on here?
-	for (got_output = 1; got_output; frameNumber++) {
-		fflush(stdout);
-
-		ret = avcodec_encode_video2(pCodecCtx, &pkt, NULL, &got_output);
-		if (ret < 0) {
-			fprintf(stderr, "Error encoding frame\n");
-			exit(1);
-		}
-
-		if (got_output) {
-			printf("Write frame %3d (size=%5d)\n", frameNumber, pkt.size);
-			fwrite(pkt.data, 1, pkt.size, pFile);
-			av_free_packet(&pkt);
-		}
-	}
-
-	/* add sequence end code to have a real mpeg file */
-	fwrite(endcode, 1, sizeof(endcode), pFile);
-	fclose(pFile);
-
-	avcodec_close(pCodecCtx);
-	av_free(pCodecCtx);
-	av_freep(&pFrame->data[0]);
-	avcodec_free_frame(&pFrame);
-}
-
