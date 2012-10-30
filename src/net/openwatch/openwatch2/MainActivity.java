@@ -9,7 +9,7 @@ import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
 import net.openwatch.openwatch2.video.VideoHardwareRecorder;
 import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
-import net.openwatch.openwatch2.video.ffmpegTest;
+import net.openwatch.openwatch2.video.FFEncoder;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.SyncStateContract.Constants;
@@ -108,9 +108,17 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-				String test_filename = "/sdcard/FFMPEG_TEST_BABY.mp4";
-				ffmpegTest.testFFMPEG(test_filename);
-				
+				String test_filename = "/sdcard/ffmpeg_testing/"+String.valueOf(new Date().getTime()) + ".mp4";
+				//FFEncoder.testFFMPEG(test_filename);
+				/*
+				public native void initializeEncoder(String filename);
+				public native void encodeFrame(byte[] data);
+				public native void finalizeEncoder();
+				*/
+				FFEncoder ffencoder = new FFEncoder();
+				ffencoder.initializeEncoder(test_filename, 320, 240);
+				ffencoder.encodeFrame(new byte[]{});
+				ffencoder.finalizeEncoder();
 			}
 			
 		});
