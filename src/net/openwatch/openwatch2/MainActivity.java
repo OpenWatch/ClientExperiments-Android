@@ -108,7 +108,7 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-				String test_filename = String.valueOf(new Date().getTime()) + "_V_TEST.mp4";
+				String test_filename = "/sdcard/FFMPEG_TEST_BABY.mp4";
 				ffmpegTest.testFFMPEG(test_filename);
 				
 			}
