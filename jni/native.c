@@ -28,11 +28,9 @@
 
 #include <math.h>
 
+#include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 #include <libavcodec/avcodec.h>
-#include <libavutil/audioconvert.h>
-#include <libavutil/common.h>
-#include <libavutil/imgutils.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/samplefmt.h>
 
@@ -54,6 +52,7 @@ AVPacket pkt;
 
 
 void Java_net_openwatch_openwatch2_video_ffmpegTest_testFFMPEG(JNIEnv * env, jobject this, jstring filename){
+
 	AVCodec *codec;
 	AVCodecContext *c= NULL;
 	int i, out_size, x, y, outbuf_size;
@@ -64,18 +63,24 @@ void Java_net_openwatch_openwatch2_video_ffmpegTest_testFFMPEG(JNIEnv * env, job
 
 	//printf("Encode video file %s\n", filename);
 
-	LOGI("method called!");
-/*
-	int codec_id = CODEC_ID_H264;
+	LOGI("1. method called!");
+
+	int codec_id = CODEC_ID_MPEG1VIDEO;
+
+	LOGI("2. codec set");
 
 	codec = avcodec_find_encoder(codec_id);
+	LOGI("2a. avcodec_alloc_context3(codec)");
 	if (!codec) {
+		LOGI("2b. codec not found");
 		//fprintf(stderr, "codec not found\n");
 		exit(1);
 	}
 
 	c = avcodec_alloc_context3(codec);
+	LOGI("3. avcodec_alloc_context3(codec)");
 	picture= avcodec_alloc_frame();
+	LOGI("4. avcodec_alloc_frame()");
 
 	c->bit_rate = 400000;
 	c->width = 352;
@@ -85,8 +90,12 @@ void Java_net_openwatch_openwatch2_video_ffmpegTest_testFFMPEG(JNIEnv * env, job
 	c->max_b_frames=1;
 	c->pix_fmt = PIX_FMT_YUV420P;
 
+	LOGI("5. set codec context");
+
 	if(codec_id == CODEC_ID_H264)
 		av_opt_set(c->priv_data, "preset", "slow", 0);
+
+	LOGI("6.av_opt_set(c->priv_data ...");
 
 	if (avcodec_open2(c, codec, NULL) < 0) {
 		//fprintf(stderr, "could not open codec\n");
@@ -133,7 +142,7 @@ void Java_net_openwatch_openwatch2_video_ffmpegTest_testFFMPEG(JNIEnv * env, job
 
 		out_size = avcodec_encode_video(c, outbuf, outbuf_size, NULL);
 		had_output |= out_size;
-		printf("write frame %3d (size=%5d)\n", i, out_size);
+		//printf("write frame %3d (size=%5d)\n", i, out_size);
 		fwrite(outbuf, 1, out_size, f);
 	}
 
@@ -151,5 +160,4 @@ void Java_net_openwatch_openwatch2_video_ffmpegTest_testFFMPEG(JNIEnv * env, job
 	av_free(picture);
 	//printf("\n");
 
-	 */
 }

@@ -1,7 +1,8 @@
 case CODEC_ID_NONE:
     return "none";
 case CODEC_ID_MPEG1VIDEO:
-    return "mpeg1video";
+    { extern AVCodec ff_mpeg1video_encoder;
+      return ff_mpeg1video_encoder.name; }
 case CODEC_ID_MPEG2VIDEO:
     { extern AVCodec ff_mpeg2video_decoder;
       return ff_mpeg2video_decoder.name; }
