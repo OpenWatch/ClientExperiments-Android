@@ -104,10 +104,10 @@ void Java_net_openwatch_openwatch2_video_FFEncoder_encodeFrame(JNIEnv * env, job
 	LOGI("Encode frame");
 	// Convert Java types
 	int frame_data_length = (*env)->GetArrayLength(env, frame_data);
+	jboolean is_copy;
+	jbyte *native_frame_data = (*env)->GetByteArrayElements(env, frame_data, &is_copy);
 
-	jbyte *native_frame_data = (*env)->GetByteArrayElements(env, frame_data, 0);
-
-	LOGI("Get native frame");
+	LOGI("Get native frame: is_copy: %d", is_copy);
 
 	/* encode 1 second of video */
 		fflush(stdout);
@@ -135,7 +135,7 @@ void Java_net_openwatch_openwatch2_video_FFEncoder_encodeFrame(JNIEnv * env, job
 		printf("encoding frame %3d (size=%5d)\n", i, out_size);
 		fwrite(outbuf, 1, out_size, f);
 
-		//free(native_frame_data);
+		(*env)->ReleaseByteArrayElements(env, frame_data, native_frame_data, 0);
 }
 
 void Java_net_openwatch_openwatch2_video_FFEncoder_finalizeEncoder(JNIEnv * env, jobject this){
