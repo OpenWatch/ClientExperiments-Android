@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
 					((Button) v).setText("Start SW Video Recording");
 				}
 				else{
-					String video_filename = String.valueOf(new Date().getTime()) + "_AV.mp4";
+					String video_filename = String.valueOf(new Date().getTime()) + "_AV_THIS_ONE.mp4";
 					File video_output_file = new File(
 							FileUtils.getExternalStorage(MainActivity.this,
 									OWConstants.recording_directory), video_filename);
@@ -109,16 +109,14 @@ public class MainActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				String test_filename = "/sdcard/ffmpeg_testing/"+String.valueOf(new Date().getTime()) + ".mp4";
-				//FFEncoder.testFFMPEG(test_filename);
+				FFEncoder.testFFMPEG(test_filename);
+
 				/*
-				public native void initializeEncoder(String filename);
-				public native void encodeFrame(byte[] data);
-				public native void finalizeEncoder();
-				*/
 				FFEncoder ffencoder = new FFEncoder();
 				ffencoder.initializeEncoder(test_filename, 320, 240);
 				ffencoder.encodeFrame(new byte[]{});
 				ffencoder.finalizeEncoder();
+				*/
 			}
 			
 		});

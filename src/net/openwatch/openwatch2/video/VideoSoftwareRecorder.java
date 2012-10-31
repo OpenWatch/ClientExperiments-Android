@@ -1,6 +1,8 @@
 package net.openwatch.openwatch2.video;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import android.graphics.ImageFormat;
@@ -16,20 +18,23 @@ public class VideoSoftwareRecorder {
 	
 	public static boolean is_recording = false;
 	
-	// Native methods
-	public static native void initializeOutputFile(String filename);
-	public static native void encodeFrame(byte[] frame);
-	public static native void finalizeFile();
+	private static FFEncoder ffencoder;
 
 	public static void startRecording(SurfaceView camera_surface_view,
 			File output_file) {
+		
+		ffencoder = new FFEncoder();
+		ffencoder.initializeEncoder(getFilePath(output_file), 320, 240);
 
 		if (camera == null)
 			camera = Camera.open();
 		else
 			return; // The last video recording was not stopped properly
-
 		
+		Camera.Parameters camera_parameters = camera.getParameters();
+		camera_parameters.setPreviewFormat(ImageFormat.YV12);
+		camera.setParameters(camera_parameters);
+
 		try {
 			camera.setPreviewDisplay(camera_surface_view.getHolder());
 		} catch (IOException e) {
@@ -45,7 +50,8 @@ public class VideoSoftwareRecorder {
 			
 			@Override
 			public void onPreviewFrame(byte[] data, Camera camera) {
-				Log.d(TAG,"Frame received");
+				//Log.d(TAG,"Frame received");
+				ffencoder.encodeFrame(data);
 			}
 		});
 		
@@ -56,9 +62,23 @@ public class VideoSoftwareRecorder {
 	public static void stopRecording() {
 		camera.stopPreview();
 		camera.setPreviewCallback(null);
+		ffencoder.finalizeEncoder();
 		camera.release();
 		camera = null;
 		is_recording = false;
+	}
+	
+	public static String getFilePath(File output_file){
+		if(!output_file.exists()){
+			try {
+				output_file.createNewFile();
+			} catch (IOException e) {
+				Log.e(TAG, "New File IOE");
+				e.printStackTrace();
+			}
+		}
+		return output_file.getAbsolutePath();
+
 	}
 
 }

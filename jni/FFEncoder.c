@@ -107,23 +107,25 @@ void Java_net_openwatch_openwatch2_video_FFEncoder_encodeFrame(JNIEnv * env, job
 
 	jbyte *native_frame_data = (*env)->GetByteArrayElements(env, frame_data, 0);
 
+	LOGI("Get native frame");
 
 	/* encode 1 second of video */
-	for(i=0;i<25;i++) {
 		fflush(stdout);
 		/* prepare a dummy image */
 		/* Y */
 		for(y=0;y<c->height;y++) {
 			for(x=0;x<c->width;x++) {
-				frame->data[0][y * frame->linesize[0] + x] = x + y + i * 3;
+				frame->data[0][y * frame->linesize[0] + x] = native_frame_data[0];
+				native_frame_data++;
 			}
 		}
 
 		/* Cb and Cr */
 		for(y=0;y<c->height/2;y++) {
 			for(x=0;x<c->width/2;x++) {
-				frame->data[1][y * frame->linesize[1] + x] = 128 + y + i * 2;
-				frame->data[2][y * frame->linesize[2] + x] = 64 + x + i * 5;
+				frame->data[1][y * frame->linesize[1] + x] = native_frame_data[0];
+				frame->data[2][y * frame->linesize[2] + x] = native_frame_data[1];
+				native_frame_data+=2;
 			}
 		}
 
@@ -132,7 +134,8 @@ void Java_net_openwatch_openwatch2_video_FFEncoder_encodeFrame(JNIEnv * env, job
 		had_output |= out_size;
 		printf("encoding frame %3d (size=%5d)\n", i, out_size);
 		fwrite(outbuf, 1, out_size, f);
-	}
+
+		//free(native_frame_data);
 }
 
 void Java_net_openwatch_openwatch2_video_FFEncoder_finalizeEncoder(JNIEnv * env, jobject this){
