@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.Date;
 
 import net.openwatch.openwatch2.audio.AudioHardwareRecorder;
+import net.openwatch.openwatch2.audio.AudioRecorder;
 import net.openwatch.openwatch2.audio.AudioStreamer;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
@@ -103,20 +104,29 @@ public class MainActivity extends Activity {
 			
 		});
 		
-		Button test_ffmpeg_btn = (Button) findViewById(R.id.test_ffmpeg_btn);
-		test_ffmpeg_btn.setOnClickListener(new OnClickListener(){
+		Button test_btn = (Button) findViewById(R.id.test_btn);
+		test_btn.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
-				String test_filename = "/sdcard/ffmpeg_testing/"+String.valueOf(new Date().getTime()) + ".mp4";
-				FFEncoder.testFFMPEG(test_filename);
-
-				/*
-				FFEncoder ffencoder = new FFEncoder();
-				ffencoder.initializeEncoder(test_filename, 320, 240);
-				ffencoder.encodeFrame(new byte[]{});
-				ffencoder.finalizeEncoder();
-				*/
+				if(VideoHardwareRecorder.is_recording){
+					AudioRecorder.stopRecording();
+					VideoHardwareRecorder.stopRecording();
+					
+				} else {
+					String test_filename = "/sdcard/ffmpeg_testing/"+String.valueOf(new Date().getTime());
+					//FFEncoder.testFFMPEG(test_filename);
+					AudioRecorder.startRecording(new File(test_filename + ".wav"));
+					VideoHardwareRecorder.startRecording((SurfaceView) MainActivity.this
+							.findViewById(R.id.camera_surface_view), new File(test_filename + ".mpg"));
+	
+					/*
+					FFEncoder ffencoder = new FFEncoder();
+					ffencoder.initializeEncoder(test_filename, 320, 240);
+					ffencoder.encodeFrame(new byte[]{});
+					ffencoder.finalizeEncoder();
+					*/
+				}
 			}
 			
 		});

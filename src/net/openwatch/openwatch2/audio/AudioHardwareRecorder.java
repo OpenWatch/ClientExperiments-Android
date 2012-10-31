@@ -8,7 +8,7 @@ import android.util.Log;
 
 public class AudioHardwareRecorder {
 	
-	public static final String TAG = "AudioRecorder";
+	public static final String TAG = "AudioHardwareRecorder";
 	
 	public static MediaRecorder audio_recorder;
 	
