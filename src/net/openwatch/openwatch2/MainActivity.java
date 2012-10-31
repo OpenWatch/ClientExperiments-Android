@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
 					((Button) v).setText("Start SW Video Recording");
 				}
 				else{
-					String video_filename = String.valueOf(new Date().getTime()) + "_AV_THIS_ONE.mp4";
+					String video_filename = String.valueOf(new Date().getTime()) + ".mpg";
 					File video_output_file = new File(
 							FileUtils.getExternalStorage(MainActivity.this,
 									OWConstants.recording_directory), video_filename);

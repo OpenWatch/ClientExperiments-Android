@@ -32,7 +32,9 @@ public class VideoSoftwareRecorder {
 			return; // The last video recording was not stopped properly
 		
 		Camera.Parameters camera_parameters = camera.getParameters();
-		camera_parameters.setPreviewFormat(ImageFormat.YV12);
+		camera_parameters.setPreviewFormat(ImageFormat.NV21);
+		// I want 420 YpCbCr 8 biplanar full range
+		camera_parameters.setPreviewSize(320, 240);
 		camera.setParameters(camera_parameters);
 
 		try {

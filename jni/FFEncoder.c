@@ -123,8 +123,8 @@ void Java_net_openwatch_openwatch2_video_FFEncoder_encodeFrame(JNIEnv * env, job
 		/* Cb and Cr */
 		for(y=0;y<c->height/2;y++) {
 			for(x=0;x<c->width/2;x++) {
-				frame->data[1][y * frame->linesize[1] + x] = native_frame_data[0];
-				frame->data[2][y * frame->linesize[2] + x] = native_frame_data[1];
+				frame->data[2][y * frame->linesize[2] + x] = native_frame_data[0];
+				frame->data[1][y * frame->linesize[1] + x] = native_frame_data[1];
 				native_frame_data+=2;
 			}
 		}
