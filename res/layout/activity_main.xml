@@ -50,7 +50,7 @@
         android:layout_below="@id/record_sw_video_btn"
         android:layout_centerInParent="true"
         android:layout_marginTop="20dp"
-        android:text="HW AV + SW A"
+        android:text="Start Dual Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
 

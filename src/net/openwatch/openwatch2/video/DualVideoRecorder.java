@@ -6,21 +6,23 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Date;
 
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
 import android.util.Log;
 import android.view.SurfaceView;
 
-public class VideoRecorder {
-	private static final String TAG = "VideoRecorder";
+public class DualVideoRecorder {
+	private static final String TAG = "DualVideoRecorder";
 	
 	public static MediaRecorder video_recorder;
 	public static Camera camera; 
 	
 	public static boolean is_recording = false;
-	
-	private static FileOutputStream camera_output_stream;
+		
+	private static FFEncoder ffencoder;
 	
 	/** 
 	 * Begin recording video the the output_file specified.
@@ -28,17 +30,23 @@ public class VideoRecorder {
 	 * @param output_file the destination of the recording. This file will be created if it doesn't
 	 * all ready exist.
 	 */
-	public static void startRecording(SurfaceView camera_surface_view, File output_file){
+	public static void startRecording(SurfaceView camera_surface_view, String file_path){
+		
+		ffencoder = new FFEncoder();
+		String file_name = String.valueOf(new Date().getTime());
+		//ffencoder.initializeEncoder(getFilePath(new File(file_path + file_name + "_LQ.mpg")), 320, 240);
 		
 		//camera_output_stream = getOutputStreamFromFile(output_file);
-		
-		// This is not buffered
-		camera_output_stream = getOrCreateFileOutputStream(output_file);
 
 		if(camera == null)
 			camera = Camera.open();
 		
 		// TODO: Camera setup method: autofocus, setRecordingHint etc.
+		Camera.Parameters camera_parameters = camera.getParameters();
+		camera_parameters.setPreviewFormat(ImageFormat.NV21);
+		camera_parameters.setPreviewSize(320, 240);
+		//camera_parameters.setRecordingHint(true);
+		camera.setParameters(camera_parameters);
 		
 		try {
 			camera.setPreviewDisplay(camera_surface_view.getHolder());
@@ -46,6 +54,16 @@ public class VideoRecorder {
 			Log.e(TAG, "setPreviewDisplay IOE");
 			e.printStackTrace();
 		}
+		
+		camera.setPreviewCallback(new Camera.PreviewCallback() {
+			
+			@Override
+			public void onPreviewFrame(byte[] data, Camera camera) {
+				//ffencoder.encodeFrame(data);
+				Log.d(TAG,"preview frame got");
+				
+			}
+		});
 		
 		camera.startPreview();
 		camera.unlock();
@@ -61,17 +79,13 @@ public class VideoRecorder {
 		video_recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
 		
 		try {
-			video_recorder.setOutputFile(camera_output_stream.getFD());
+			video_recorder.setOutputFile(file_path + file_name + "_HQ.mp4");
 		} catch (IllegalStateException e) {
 			Log.e(TAG, "setOutputFile ISE");
 			e.printStackTrace();
-		} catch (IOException e) {
-			Log.e(TAG, "setOutputFile IOE");
-			e.printStackTrace();
 		}
 		
-		video_recorder.setPreviewDisplay(camera_surface_view.getHolder().getSurface());
-		
+		//video_recorder.setPreviewDisplay(camera_surface_view.getHolder().getSurface());
 		try {
 			video_recorder.prepare();
 		} catch (IllegalStateException e) {
@@ -92,15 +106,10 @@ public class VideoRecorder {
 		video_recorder.release();
 		camera.lock();
 		camera.stopPreview();
+		camera.setPreviewCallback(null);
+		//ffencoder.finalizeEncoder();
 		camera.release();
 		camera = null;
-		
-		try {
-			camera_output_stream.close();
-		} catch (IOException e) {
-			Log.e(TAG, "close camera_output_stream IOE");
-			e.printStackTrace();
-		}
 		
 		is_recording = false;
 	}
@@ -138,6 +147,19 @@ public class VideoRecorder {
 		}
 		
 		return null;
+	}
+	
+	public static String getFilePath(File output_file){
+		if(!output_file.exists()){
+			try {
+				output_file.createNewFile();
+			} catch (IOException e) {
+				Log.e(TAG, "New File IOE");
+				e.printStackTrace();
+			}
+		}
+		return output_file.getAbsolutePath();
+
 	}
 	
 }

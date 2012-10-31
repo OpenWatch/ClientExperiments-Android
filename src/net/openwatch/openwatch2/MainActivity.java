@@ -4,10 +4,11 @@ import java.io.File;
 import java.util.Date;
 
 import net.openwatch.openwatch2.audio.AudioHardwareRecorder;
-import net.openwatch.openwatch2.audio.AudioRecorder;
+import net.openwatch.openwatch2.audio.AudioSoftwareRecorder;
 import net.openwatch.openwatch2.audio.AudioStreamer;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
+import net.openwatch.openwatch2.video.DualVideoRecorder;
 import net.openwatch.openwatch2.video.VideoHardwareRecorder;
 import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
 import net.openwatch.openwatch2.video.FFEncoder;
@@ -109,17 +110,16 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-				if(VideoHardwareRecorder.is_recording){
-					AudioRecorder.stopRecording();
-					VideoHardwareRecorder.stopRecording();
+				if(DualVideoRecorder.is_recording){
+					//AudioRecorder.stopRecording();
+					DualVideoRecorder.stopRecording();
+					((Button)v).setText("Start Dual Video Recording");
 					
 				} else {
-					String test_filename = "/sdcard/ffmpeg_testing/"+String.valueOf(new Date().getTime());
-					//FFEncoder.testFFMPEG(test_filename);
-					AudioRecorder.startRecording(new File(test_filename + ".wav"));
-					VideoHardwareRecorder.startRecording((SurfaceView) MainActivity.this
-							.findViewById(R.id.camera_surface_view), new File(test_filename + ".mpg"));
-	
+					String output_dir = "/sdcard/ffmpeg_testing/";
+					DualVideoRecorder.startRecording((SurfaceView) MainActivity.this
+							.findViewById(R.id.camera_surface_view), output_dir);
+					((Button)v).setText("Stop Dual Video Recording");
 					/*
 					FFEncoder ffencoder = new FFEncoder();
 					ffencoder.initializeEncoder(test_filename, 320, 240);
