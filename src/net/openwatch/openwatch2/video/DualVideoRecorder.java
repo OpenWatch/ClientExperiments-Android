@@ -22,7 +22,7 @@ public class DualVideoRecorder {
 	
 	public static boolean is_recording = false;
 		
-	private static FFEncoder ffencoder;
+	private static FFVideoEncoder ffencoder;
 	
 	/** 
 	 * Begin recording video the the output_file specified.
@@ -32,7 +32,7 @@ public class DualVideoRecorder {
 	 */
 	public static void startRecording(SurfaceView camera_surface_view, String file_path){
 		
-		ffencoder = new FFEncoder();
+		ffencoder = new FFVideoEncoder();
 		String file_name = String.valueOf(new Date().getTime());
 		//ffencoder.initializeEncoder(getFilePath(new File(file_path + file_name + "_LQ.mpg")), 320, 240);
 		

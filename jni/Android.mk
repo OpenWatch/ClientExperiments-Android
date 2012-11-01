@@ -48,9 +48,20 @@ include $(CLEAR_VARS)
 LOCAL_LDLIBS += -llog -lz
 LOCAL_STATIC_LIBRARIES := libavformat libavcodec libpostproc libswscale libavutil
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
-LOCAL_SRC_FILES := FFEncoder.c
+LOCAL_SRC_FILES := FFVideoEncoder.c
 LOCAL_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=neon
-LOCAL_MODULE := FFEncoder
+LOCAL_MODULE := FFVideoEncoder
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+
+LOCAL_LDLIBS += -llog -lz
+LOCAL_STATIC_LIBRARIES := libavformat libavcodec libpostproc libswscale libavutil
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
+LOCAL_SRC_FILES := FFAudioEncoder.c
+LOCAL_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+LOCAL_MODULE := FFAudioEncoder
 
 include $(BUILD_SHARED_LIBRARY)
 

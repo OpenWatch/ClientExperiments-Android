@@ -18,12 +18,12 @@ public class VideoSoftwareRecorder {
 	
 	public static boolean is_recording = false;
 	
-	private static FFEncoder ffencoder;
+	private static FFVideoEncoder ffencoder;
 
 	public static void startRecording(SurfaceView camera_surface_view,
 			File output_file) {
 		
-		ffencoder = new FFEncoder();
+		ffencoder = new FFVideoEncoder();
 		ffencoder.initializeEncoder(getFilePath(output_file), 320, 240);
 
 		if (camera == null)

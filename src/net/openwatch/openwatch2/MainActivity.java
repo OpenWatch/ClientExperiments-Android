@@ -1,17 +1,19 @@
 package net.openwatch.openwatch2;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Date;
 
 import net.openwatch.openwatch2.audio.AudioHardwareRecorder;
 import net.openwatch.openwatch2.audio.AudioSoftwareRecorder;
 import net.openwatch.openwatch2.audio.AudioStreamer;
+import net.openwatch.openwatch2.audio.FFAudioEncoder;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
 import net.openwatch.openwatch2.video.DualVideoRecorder;
 import net.openwatch.openwatch2.video.VideoHardwareRecorder;
 import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
-import net.openwatch.openwatch2.video.FFEncoder;
+import net.openwatch.openwatch2.video.FFVideoEncoder;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.SyncStateContract.Constants;
@@ -27,6 +29,8 @@ public class MainActivity extends Activity {
 	
 	private Button record_hw_video_btn;
 	private Button record_sw_video_btn;
+	
+	private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
 
 	@SuppressLint("NewApi")
 	@Override
@@ -110,16 +114,31 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-				if(DualVideoRecorder.is_recording){
-					//AudioRecorder.stopRecording();
-					DualVideoRecorder.stopRecording();
-					((Button)v).setText("Start Dual Video Recording");
+				if(audio_software_recorder.is_recording){
+					//audio_software_recorder.stopRecording();
+					//DualVideoRecorder.stopRecording();
+					
+					((Button)v).setText("Start SW Audio Recording");
 					
 				} else {
-					String output_dir = "/sdcard/ffmpeg_testing/";
+					String output_filename = "/sdcard/ffmpeg_testing/" + String.valueOf(new Date().getTime()) + ".mp3";
+					
+					File test_file = new File(output_filename);
+					if(!test_file.exists()){
+						try {
+							test_file.createNewFile();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+					FFAudioEncoder.testFFMPEG(output_filename);
+					/*
 					DualVideoRecorder.startRecording((SurfaceView) MainActivity.this
-							.findViewById(R.id.camera_surface_view), output_dir);
-					((Button)v).setText("Stop Dual Video Recording");
+							.findViewById(R.id.camera_surface_view), output_dir);*/
+					
+					//audio_software_recorder.startRecording(new File(output_dir));
+					((Button)v).setText("Stop SW Audio Recording");
 					/*
 					FFEncoder ffencoder = new FFEncoder();
 					ffencoder.initializeEncoder(test_filename, 320, 240);
