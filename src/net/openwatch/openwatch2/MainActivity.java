@@ -117,11 +117,11 @@ public class MainActivity extends Activity {
 				if(audio_software_recorder.is_recording){
 					//audio_software_recorder.stopRecording();
 					//DualVideoRecorder.stopRecording();
-					
+					audio_software_recorder.stopRecording();
 					((Button)v).setText("Start SW Audio Recording");
 					
 				} else {
-					String output_filename = "/sdcard/ffmpeg_testing/" + String.valueOf(new Date().getTime()) + ".mp3";
+					String output_filename = "/sdcard/ffmpeg_testing/" + String.valueOf(new Date().getTime()) + "_AUDIO_SW.mp4";
 					
 					File test_file = new File(output_filename);
 					if(!test_file.exists()){
@@ -132,7 +132,8 @@ public class MainActivity extends Activity {
 							e.printStackTrace();
 						}
 					}
-					FFAudioEncoder.testFFMPEG(output_filename);
+					audio_software_recorder.startRecording(test_file);
+					//FFAudioEncoder.testFFMPEG(output_filename);
 					/*
 					DualVideoRecorder.startRecording((SurfaceView) MainActivity.this
 							.findViewById(R.id.camera_surface_view), output_dir);*/

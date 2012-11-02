@@ -20,7 +20,7 @@ AVCodecContext *c= NULL;
 int frame_size, i, j, out_size, outbuf_size;
 FILE *f;
 short *samples;
-float t, tincr;
+//short *samples_buffer;
 uint8_t *outbuf;
 
 jint Java_net_openwatch_openwatch2_audio_FFAudioEncoder_initializeEncoder(JNIEnv * env, jobject this, jstring filename, jint width, jint height){
@@ -32,6 +32,7 @@ jint Java_net_openwatch_openwatch2_audio_FFAudioEncoder_initializeEncoder(JNIEnv
 	avcodec_register_all();
 
 	codec = avcodec_find_encoder(CODEC_ID_MP2);
+	//codec = avcodec_find_encoder(CODEC_ID_AAC);
 	if (!codec) {
 		//fprintf(stderr, "codec not found\n");
 		LOGI("codec not found");
@@ -55,11 +56,15 @@ jint Java_net_openwatch_openwatch2_audio_FFAudioEncoder_initializeEncoder(JNIEnv
 
 	/* the codec gives us the frame size, in samples */
 	frame_size = c->frame_size;
+	LOGI("Frame size: %d samples", c->frame_size);
 	//int num_samples = frame_size * 2 * c->channels;
 	// buffer size as short[]
-	buffer_size = av_samples_get_buffer_size(NULL, c->channels, c->frame_size,
-	                                             c->sample_fmt, 0) / 2;
-	samples = malloc(num_samples);
+	//int buffer_size = av_samples_get_buffer_size(NULL, c->channels, c->frame_size,
+	//                                             c->sample_fmt, 0) / 2;
+
+	samples = malloc(frame_size * 2 * c->channels);
+
+	int buffer_size = av_get_bytes_per_sample(c->sample_fmt) * frame_size * 2 * c->channels;
 	outbuf_size = 10000;
 	outbuf = malloc(outbuf_size);
 
@@ -70,18 +75,16 @@ jint Java_net_openwatch_openwatch2_audio_FFAudioEncoder_initializeEncoder(JNIEnv
 		exit(1);
 	}
 
-	t = 0;
-	tincr = 2 * M_PI * 440.0 / c->sample_rate;
 
-	return buffer_size;
+	return frame_size;
 }
 
-void Java_net_openwatch_openwatch2_audio_FFAudioEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray frame_data){
+void Java_net_openwatch_openwatch2_audio_FFAudioEncoder_encodeFrame(JNIEnv * env, jobject this, jshortArray frame_data){
 	LOGI("Encode frame");
 	// Convert Java types
 	int frame_data_length = (*env)->GetArrayLength(env, frame_data);
 	jboolean is_copy;
-	jbyte *native_frame_data = (*env)->GetByteArrayElements(env, frame_data, &is_copy);
+	jshort *native_frame_data = (*env)->GetShortArrayElements(env, frame_data, &is_copy);
 
 	LOGI("Get native frame: is_copy: %d", is_copy);
 
@@ -94,7 +97,7 @@ void Java_net_openwatch_openwatch2_audio_FFAudioEncoder_encodeFrame(JNIEnv * env
 	out_size = avcodec_encode_audio(c, outbuf, outbuf_size, samples);
 	fwrite(outbuf, 1, out_size, f);
 
-	(*env)->ReleaseByteArrayElements(env, frame_data, native_frame_data, 0);
+	(*env)->ReleaseShortArrayElements(env, frame_data, native_frame_data, 0);
 }
 
 void Java_net_openwatch_openwatch2_audio_FFAudioEncoder_finalizeEncoder(JNIEnv * env, jobject this){
