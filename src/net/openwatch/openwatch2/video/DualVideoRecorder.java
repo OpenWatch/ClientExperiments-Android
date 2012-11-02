@@ -17,12 +17,11 @@ import android.view.SurfaceView;
 public class DualVideoRecorder {
 	private static final String TAG = "DualVideoRecorder";
 	
-	public static MediaRecorder video_recorder;
 	public static Camera camera; 
 	
 	public static boolean is_recording = false;
 		
-	private static FFVideoEncoder ffencoder;
+	private static FFDualVideoEncoder ffencoder;
 	
 	/** 
 	 * Begin recording video the the output_file specified.
@@ -32,7 +31,9 @@ public class DualVideoRecorder {
 	 */
 	public static void startRecording(SurfaceView camera_surface_view, String file_path){
 		
-		ffencoder = new FFVideoEncoder();
+		ffencoder = new FFDualVideoEncoder();
+		
+		
 		String file_name = String.valueOf(new Date().getTime());
 		//ffencoder.initializeEncoder(getFilePath(new File(file_path + file_name + "_LQ.mpg")), 320, 240);
 		
@@ -59,58 +60,27 @@ public class DualVideoRecorder {
 			
 			@Override
 			public void onPreviewFrame(byte[] data, Camera camera) {
-				//ffencoder.encodeFrame(data);
-				Log.d(TAG,"preview frame got");
+				hq_ffencoder.encodeFrame(data);
+				lq_ffencoder.encodeFrame(data);
+				//Log.d(TAG,"preview frame got");
 				
 			}
 		});
 		
 		camera.startPreview();
-		camera.unlock();
-		
-		video_recorder = new MediaRecorder();
-		
-		video_recorder.setCamera(camera);
-		video_recorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
-		video_recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-		
-		video_recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-		video_recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-		video_recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-		
-		try {
-			video_recorder.setOutputFile(file_path + file_name + "_HQ.mp4");
-		} catch (IllegalStateException e) {
-			Log.e(TAG, "setOutputFile ISE");
-			e.printStackTrace();
-		}
-		
-		//video_recorder.setPreviewDisplay(camera_surface_view.getHolder().getSurface());
-		try {
-			video_recorder.prepare();
-		} catch (IllegalStateException e) {
-			Log.e(TAG, "video_recorder.prepare ISE");
-			e.printStackTrace();
-		} catch (IOException e) {
-			Log.e(TAG, "video_recorder.prepare IOE");
-			e.printStackTrace();
-		}
-		
-		video_recorder.start();
+		//camera.unlock();
+
 		is_recording = true;
 
 	}
 	
 	public static void stopRecording(){
-		video_recorder.stop();
-		video_recorder.release();
-		camera.lock();
 		camera.stopPreview();
 		camera.setPreviewCallback(null);
-		//ffencoder.finalizeEncoder();
+		hq_ffencoder.finalizeEncoder();
+		lq_ffencoder.finalizeEncoder();
 		camera.release();
 		camera = null;
-		
 		is_recording = false;
 	}
 	

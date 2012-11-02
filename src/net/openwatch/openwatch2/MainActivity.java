@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
 			this.getActionBar().setDisplayShowTitleEnabled(false);
 			this.getActionBar().setTitle("OW Tech Demo");
 		}
-
+		/*
 		record_hw_video_btn = (Button) findViewById(R.id.record_hw_video_btn);
 		record_hw_video_btn.setOnClickListener(new OnClickListener() {
 
@@ -67,11 +67,11 @@ public class MainActivity extends Activity {
 					// nope. Throws IllegalStateException
 					// Even when a different hardware encoder is used
 					// i.e: VideoRecorder using AAC audio hardware and AudioRecorder using AMR hardware
-					/*
-					String audio_filename = String.valueOf(new Date().getTime()) + "_A.3gpp";
-					File audio_output_file = new File(FileUtils.getExternalStorage(MainActivity.this, OWConstants.recording_directory), audio_filename);
-					AudioRecorder.startRecording(audio_output_file);
-					*/
+					
+					//String audio_filename = String.valueOf(new Date().getTime()) + "_A.3gpp";
+					//File audio_output_file = new File(FileUtils.getExternalStorage(MainActivity.this, OWConstants.recording_directory), audio_filename);
+					//AudioRecorder.startRecording(audio_output_file);
+					
 					record_sw_video_btn.setEnabled(false);
 					((Button) v).setText("Stop HW Recording Video");
 				}
@@ -108,44 +108,27 @@ public class MainActivity extends Activity {
 			}
 			
 		});
+		 */
 		
 		Button test_btn = (Button) findViewById(R.id.test_btn);
 		test_btn.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
-				if(audio_software_recorder.is_recording){
+				if(DualVideoRecorder.is_recording){
 					//audio_software_recorder.stopRecording();
-					//DualVideoRecorder.stopRecording();
-					audio_software_recorder.stopRecording();
-					((Button)v).setText("Start SW Audio Recording");
+					DualVideoRecorder.stopRecording();
+					((Button)v).setText("Start Recording");
 					
 				} else {
-					String output_filename = "/sdcard/ffmpeg_testing/" + String.valueOf(new Date().getTime()) + "_AUDIO_SW.mp4";
+					String output_file_path = "/sdcard/ffmpeg_testing/" + String.valueOf(new Date().getTime());
 					
-					File test_file = new File(output_filename);
-					if(!test_file.exists()){
-						try {
-							test_file.createNewFile();
-						} catch (IOException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-					}
-					audio_software_recorder.startRecording(test_file);
-					//FFAudioEncoder.testFFMPEG(output_filename);
-					/*
+					//audio_software_recorder.startRecording(output_file_path);
 					DualVideoRecorder.startRecording((SurfaceView) MainActivity.this
-							.findViewById(R.id.camera_surface_view), output_dir);*/
-					
+							.findViewById(R.id.camera_surface_view), output_file_path);
+					//FFAudioEncoder.testFFMPEG(output_filename);
 					//audio_software_recorder.startRecording(new File(output_dir));
-					((Button)v).setText("Stop SW Audio Recording");
-					/*
-					FFEncoder ffencoder = new FFEncoder();
-					ffencoder.initializeEncoder(test_filename, 320, 240);
-					ffencoder.encodeFrame(new byte[]{});
-					ffencoder.finalizeEncoder();
-					*/
+					((Button)v).setText("Stop Recording");
 				}
 			}
 			

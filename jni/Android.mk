@@ -65,6 +65,17 @@ LOCAL_MODULE := FFAudioEncoder
 
 include $(BUILD_SHARED_LIBRARY)
 
+include $(CLEAR_VARS)
+
+LOCAL_LDLIBS += -llog -lz
+LOCAL_STATIC_LIBRARIES := libavformat libavcodec libpostproc libswscale libavutil
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
+LOCAL_SRC_FILES := FFDualVideoEncoder.c
+LOCAL_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+LOCAL_MODULE := FFDualVideoEncoder
+
+include $(BUILD_SHARED_LIBRARY)
+
 LOCAL_PATH := $(call my-dir)
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
 include $(all-subdir-makefiles)

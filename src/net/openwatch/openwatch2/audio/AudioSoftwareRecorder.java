@@ -16,8 +16,10 @@ public class AudioSoftwareRecorder {
 		
 	public static boolean is_recording = false;
 	
-	public void startRecording(File output_file) {
-		RecorderTask audio_recorder_task = new RecorderTask(output_file.getAbsolutePath());
+	public void startRecording(String output_file_path) {
+		
+		String output_file_name = output_file_path + "_AUDIO.mpg";
+		RecorderTask audio_recorder_task = new RecorderTask(getFilePath(new File(output_file_name)));
 		audio_recorder_task.execute();
 		//recorder_thread = this.new recorderThread(output_file.getAbsolutePath());
 		//recorder_thread.start();
@@ -118,5 +120,18 @@ public class AudioSoftwareRecorder {
 		}
 		
 	} // recorderThread
+	
+	public static String getFilePath(File output_file){
+		if(!output_file.exists()){
+			try {
+				output_file.createNewFile();
+			} catch (IOException e) {
+				Log.e(TAG, "New File IOE");
+				e.printStackTrace();
+			}
+		}
+		return output_file.getAbsolutePath();
+
+	}
 
 } // AudioSoftwareRecorder

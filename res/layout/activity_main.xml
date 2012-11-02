@@ -8,6 +8,17 @@
         android:layout_width="fill_parent"
         android:layout_height="150dp"
         android:gravity="center" />
+    
+    <Button
+        android:id="@+id/test_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_marginTop="20dp"
+        android:text="Start Recording"
+        android:textSize="25dp"
+        tools:context=".MainActivity" />
+    
     <!--
     <Button
         android:layout_width="wrap_content"
@@ -19,7 +30,7 @@
         android:textSize="25dp"
         android:visibility="gone"
         tools:context=".MainActivity" />
-    -->
+    
 
     <Button
         android:id="@+id/record_hw_video_btn"
@@ -42,16 +53,9 @@
         android:text="Start SW Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
+        
+        -->
     
-    <Button
-        android:id="@+id/test_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/record_sw_video_btn"
-        android:layout_centerInParent="true"
-        android:layout_marginTop="20dp"
-        android:text="Start Audio Recording"
-        android:textSize="25dp"
-        tools:context=".MainActivity" />
+    
 
 </RelativeLayout>
