@@ -6,7 +6,7 @@ public class FFDualVideoEncoder {
     	System.loadLibrary("FFDualVideoEncoder");
     }
 		
-	public native void initializeEncoder(String filepath, int width, int height);
+	public native void initializeEncoder(String hq_file_name, String lq_file_name, int width, int height);
 	public native void encodeFrame(byte[] data);
 	public native void finalizeEncoder();
 

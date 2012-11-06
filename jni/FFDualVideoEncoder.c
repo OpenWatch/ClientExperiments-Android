@@ -10,6 +10,8 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/samplefmt.h>
+#include <libswscale/swscale.h>
+//#include <swscale_internal.h>
 
 #define LOG_TAG "FFVideoEncoder"
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -19,19 +21,21 @@ AVCodec *codec;
 AVCodecContext *c_hq, *c_lq= NULL;
 AVFrame *frame_hq, *frame_lq;
 AVPacket pkt;
-int i, out_size_hq, out_size_lq, x, y, outbuf_size_hq, outbuf_size_lq;
+int i, out_size_hq, out_size_lq, x, y, outbuf_size_hq, outbuf_size_lq, ret;
 FILE *f_hq, *f_lq;
 uint8_t *outbuf_hq, *outbuf_lq;
 int had_output_hq=0, had_output_lq=0;
 
-void Java_net_openwatch_openwatch2_video_FFVideoEncoder_initializeEncoder(JNIEnv * env, jobject this, jstring filepath, jint width, jint height){
+struct SwsContext *sws_ctx;
+
+void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JNIEnv * env, jobject this, jstring file_name_hq, jstring file_name_lq, jint width, jint height){
 
 	// Convert Java types
-	const jbyte *native_filename;
-	native_filepath = (*env)->GetStringUTFChars(env, filename, NULL);
+	const jbyte *native_filename_hq;
+	const jbyte *native_filename_lq;
 
-	const char native_filename_hq[] = native_filepath + "_HQ.mpg";
-	const char native_filename_lq[] = native_filepath + "_LQ.mpg";
+	native_filename_hq = (*env)->GetStringUTFChars(env, file_name_hq, NULL);
+	native_filename_lq = (*env)->GetStringUTFChars(env, file_name_lq, NULL);
 
 	int native_height_hq = (int) height;
 	int native_width_hq = (int) width;
@@ -43,7 +47,7 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_initializeEncoder(JNIEnv
 
 	int codec_id = CODEC_ID_MPEG1VIDEO;
 
-	LOGI("Encode video files to %s", native_filepath);
+	LOGI("Encode video files %s , %s ", native_filename_hq, native_filename_lq);
 	/* find the mpeg1 video encoder */
 	codec = avcodec_find_encoder(codec_id);
 	if (!codec) {
@@ -60,8 +64,8 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_initializeEncoder(JNIEnv
 		fprintf(stderr,
 				"Impossible to create scale context for the conversion "
 				"fmt:%s s:%dx%d -> fmt:%s s:%dx%d\n",
-				av_get_pix_fmt_name(PIX_FMT_YUV420P), native_width_hq, inputSize.height_hq,
-				av_get_pix_fmt_name(PIX_FMT_YUV420P), native_width_lq, outputSize.height_lq);
+				av_get_pix_fmt_name(PIX_FMT_YUV420P), native_width_hq, native_height_hq,
+				av_get_pix_fmt_name(PIX_FMT_YUV420P), native_width_lq, native_height_lq);
 		ret = AVERROR(EINVAL);
 		exit(1);
 	}
@@ -124,22 +128,30 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_initializeEncoder(JNIEnv
 	outbuf_hq = malloc(outbuf_size_hq);
 
 	outbuf_size_lq = 100000 + 12*c_lq->width*c_lq->height;
-		outbuf_lq = malloc(outbuf_size_lq);
+	outbuf_lq = malloc(outbuf_size_lq);
 
 	LOGI("malloc outbuf");
 
 	/* the image can be allocated by any means and av_image_alloc() is
 	 * just the most convenient way if av_malloc() is to be used */
-	av_image_alloc(frame_hq->data, frame_hq->linesize,
+	ret = av_image_alloc(frame_hq->data, frame_hq->linesize,
 				   c_hq->width, c_hq->height, c_hq->pix_fmt, 1);
-	av_image_alloc(frame_lq->data, frame_lq->linesize,
+	 if (ret < 0) {
+	        LOGE("Could not allocate raw picture buffer\n");
+	        exit(1);
+	}
+	ret = av_image_alloc(frame_lq->data, frame_lq->linesize,
 					   c_lq->width, c_lq->height, c_lq->pix_fmt, 1);
+	 if (ret < 0) {
+	        LOGE("Could not allocate scaled picture buffer");
+	        exit(1);
+	}
 
 	LOGI("malloc av_image");
 
 }
 
-void Java_net_openwatch_openwatch2_video_FFVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray frame_data){
+void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray frame_data){
 	LOGI("Encode frame");
 	// Convert Java types
 	int frame_data_length = (*env)->GetArrayLength(env, frame_data);
@@ -152,16 +164,16 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_encodeFrame(JNIEnv * env
 		fflush(stdout);
 		/* prepare a dummy image */
 		/* Y */
-		for(y=0;y<c->height;y++) {
-			for(x=0;x<c->width;x++) {
+		for(y=0;y<c_hq->height;y++) {
+			for(x=0;x<c_hq->width;x++) {
 				frame_hq->data[0][y * frame_hq->linesize[0] + x] = native_frame_data[0];
 				native_frame_data++;
 			}
 		}
 
 		/* Cb and Cr */
-		for(y=0;y<c->height/2;y++) {
-			for(x=0;x<c->width/2;x++) {
+		for(y=0;y<c_hq->height/2;y++) {
+			for(x=0;x<c_hq->width/2;x++) {
 				frame_hq->data[2][y * frame_hq->linesize[2] + x] = native_frame_data[0];
 				frame_hq->data[1][y * frame_hq->linesize[1] + x] = native_frame_data[1];
 				native_frame_data+=2;
@@ -171,14 +183,14 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_encodeFrame(JNIEnv * env
 		// TODO: Resize and encode LQ frame
 
 		/* convert to destination format */
-		    sws_scale(sws_ctx, (const uint8_t * const*)frame->data,
-		              frame->linesize, 0, inputSize.height, scaledFrame->data, scaledFrame->linesize);
+		sws_scale(sws_ctx, (const uint8_t * const*)frame_hq->data,
+		          frame_hq->linesize, 0, frame_lq->height, frame_lq->data, frame_lq->linesize);
 
 		/* encode the image */
 		out_size_hq = avcodec_encode_video(c_hq, outbuf_hq, outbuf_size_hq, frame_hq);
 		had_output_hq |= out_size_hq;
 
-		out_size_lq = avcodec_encode_video(c_hq, outbuf_hq, outbuf_size_hq, frame_hq);
+		out_size_lq = avcodec_encode_video(c_lq, outbuf_lq, outbuf_size_lq, frame_lq);
 		had_output_lq |= out_size_lq;
 
 		//printf("encoding frame %3d (size=%5d)\n", i, out_size);
@@ -188,7 +200,7 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_encodeFrame(JNIEnv * env
 		(*env)->ReleaseByteArrayElements(env, frame_data, native_frame_data, 0);
 }
 
-void Java_net_openwatch_openwatch2_video_FFVideoEncoder_finalizeEncoder(JNIEnv * env, jobject this){
+void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_finalizeEncoder(JNIEnv * env, jobject this){
 	LOGI("finalize encoder");
 
 	/* get the delayed frames */
@@ -198,17 +210,28 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_finalizeEncoder(JNIEnv *
 		out_size_hq = avcodec_encode_video(c_hq, outbuf_hq, outbuf_size_hq, NULL);
 		had_output_hq |= out_size_hq;
 		//printf("write frame %3d (size=%5d)\n", i, out_size);
-		LOGI("write frame %3d (size=%5d)", i, out_size);
+		LOGI("write frame %3d (size=%5d)", i, out_size_hq);
 		fwrite(outbuf_hq, 1, out_size_hq, f_hq);
 	}
 
-	/* add sequence end code to have a real mpeg file */
-	outbuf[0] = 0x00;
-	outbuf[1] = 0x00;
-	outbuf[2] = 0x01;
-	outbuf[3] = 0xb7;
+	for(; out_size_lq || !had_output_lq; i++) {
+			//fflush(stdout);
+
+			out_size_lq = avcodec_encode_video(c_lq, outbuf_lq, outbuf_size_lq, NULL);
+			had_output_lq |= out_size_lq;
+			//printf("write frame %3d (size=%5d)\n", i, out_size);
+			LOGI("write frame %3d (size=%5d)", i, out_size_lq);
+			fwrite(outbuf_lq, 1, out_size_lq, f_lq);
+	}
+	// the out_size_lq and out_size_hq should be equal in size so
+	// we probably don't need two separate loops.
 
 	// HQ
+	/* add sequence end code to have a real mpeg file */
+	outbuf_hq[0] = 0x00;
+	outbuf_hq[1] = 0x00;
+	outbuf_hq[2] = 0x01;
+	outbuf_hq[3] = 0xb7;
 	fwrite(outbuf_hq, 1, 4, f_hq);
 	fclose(f_hq);
 	free(outbuf_hq);
@@ -219,6 +242,11 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_finalizeEncoder(JNIEnv *
 	av_free(frame_hq);
 
 	// LQ
+	/* add sequence end code to have a real mpeg file */
+	outbuf_lq[0] = 0x00;
+	outbuf_lq[1] = 0x00;
+	outbuf_lq[2] = 0x01;
+	outbuf_lq[3] = 0xb7;
 	fwrite(outbuf_lq, 1, 4, f_lq);
 	fclose(f_lq);
 	free(outbuf_lq);

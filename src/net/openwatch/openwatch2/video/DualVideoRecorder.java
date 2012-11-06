@@ -34,8 +34,10 @@ public class DualVideoRecorder {
 		ffencoder = new FFDualVideoEncoder();
 		
 		
-		String file_name = String.valueOf(new Date().getTime());
-		//ffencoder.initializeEncoder(getFilePath(new File(file_path + file_name + "_LQ.mpg")), 320, 240);
+		String hq_file_name = file_path + "_HQ.mpeg";
+		String lq_file_name = file_path + "_LQ.mpeg";
+		
+		ffencoder.initializeEncoder(hq_file_name, lq_file_name, 320, 240);
 		
 		//camera_output_stream = getOutputStreamFromFile(output_file);
 
@@ -60,8 +62,8 @@ public class DualVideoRecorder {
 			
 			@Override
 			public void onPreviewFrame(byte[] data, Camera camera) {
-				hq_ffencoder.encodeFrame(data);
-				lq_ffencoder.encodeFrame(data);
+				//hq_ffencoder.encodeFrame(data);
+				//lq_ffencoder.encodeFrame(data);
 				//Log.d(TAG,"preview frame got");
 				
 			}
@@ -77,8 +79,8 @@ public class DualVideoRecorder {
 	public static void stopRecording(){
 		camera.stopPreview();
 		camera.setPreviewCallback(null);
-		hq_ffencoder.finalizeEncoder();
-		lq_ffencoder.finalizeEncoder();
+		//hq_ffencoder.finalizeEncoder();
+		//lq_ffencoder.finalizeEncoder();
 		camera.release();
 		camera = null;
 		is_recording = false;
