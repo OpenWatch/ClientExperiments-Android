@@ -45,8 +45,8 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	avcodec_init();
 	avcodec_register_all();
 
-	//int codec_id = CODEC_ID_MPEG1VIDEO;
-	int codec_id = CODEC_ID_MPEG4;
+	int codec_id = CODEC_ID_MPEG1VIDEO;
+	//int codec_id = CODEC_ID_MPEG4;
 
 	LOGI("Encode video files %s , %s ", native_filename_hq, native_filename_lq);
 	/* find the mpeg1 video encoder */

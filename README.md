@@ -1,14 +1,18 @@
-##ClientExperiments-Android
+##ClientExperiments-Android (ffmpeg branch)
 This repository includes experiments in recording, encoding and processing audio and video for streaming to the OpenWatch MediaCapture server.
 
-### ffmpeg branch
-I've determined that performance with ffmpeg is too poor for our needs. Simultaneously recording 640x480 and 320x240 video streams (via a single CameraPreviewCallback) bogged the test device (Galaxy Nexus) down to ~2fps. I believe invoking the JNI on every frame callback is too expensive.
+
+###Outcome
+Software encoding with FFmpeg is not a viable solution to recording two simultaneous video streams. Encoding in software and traversing the JNI present significant performance hurdles.
 
 ###Capabilities
 
-+ Audio and Video recording with `MediaRecorder` (HW Encoding) and `ffmpeg` (SW Encoding)
-  + `net.openwatch.openwatch2.video.VideoHardwareRecorder`
-  + `net.openwatch.openwatch2.video.VideoSoftwareRecorder`
-+ Dual Video Recording (SW Encoding)
-  + `net.openwatch.openwatch2.video.DualVideoRecorder`
-      + Encodes a 640x480 and 320x240 video stream independently
+This is a proof-of-concept for live encoding of two video streams using ffmpeg on the Android platform. 
+
+### Performance
+Simultaneously recording 640x480 and 320x240 video streams (via a single CameraPreviewCallback @ 640x480) bogged the test device (Galaxy Nexus) down to ~2fps.
+
+###Inspiration
+
+http://dmitrydzz-hobby.blogspot.com/2012/04/how-to-build-ffmpeg-and-use-it-in.html
+https://github.com/havlenapetr/FFMpeg
