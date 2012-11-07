@@ -30,6 +30,10 @@ public class MainActivity extends Activity {
 	private Button record_hw_video_btn;
 	private Button record_sw_video_btn;
 	
+	private static final int max_chunks = 4;
+	private static int chunk_counter = 0;
+	private static String output_filename = "";
+	
 	private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
 
 	@SuppressLint("NewApi")
@@ -109,30 +113,39 @@ public class MainActivity extends Activity {
 			
 		});
 		 */
+		String output_dir = "/sdcard/ffmpeg_testing";
+		File output_dir_file = new File(output_dir);
+		if(!output_dir_file.exists())
+			output_dir_file.mkdir();
+		
+		output_filename = output_dir + "/" + String.valueOf(new Date().getTime());
 		
 		Button test_btn = (Button) findViewById(R.id.test_btn);
 		test_btn.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
-				if(DualVideoRecorder.is_recording){
+				if(VideoHardwareRecorder.is_recording){
+					chunk_counter ++;
 					//audio_software_recorder.stopRecording();
-					DualVideoRecorder.stopRecording();
-					((Button)v).setText("Start Recording");
+					VideoHardwareRecorder.stopRecording();
+					if(chunk_counter < max_chunks){
+						v.callOnClick();
+					}
+					else{
+						((Button)v).setText("Start Recording");
+					}
+					
 					
 				} else {
-					String output_dir_string = "/sdcard/ffmpeg_testing";
-					File output_dir_file = new File(output_dir_string);
-					if(!output_dir_file.exists())
-						output_dir_file.mkdir();
-					String output_file_path = output_dir_string + "/" + String.valueOf(new Date().getTime());
+					//String output_file_path = output_dir_string + "/" + String.valueOf(new Date().getTime());
 					
 					//audio_software_recorder.startRecording(output_file_path);
-					DualVideoRecorder.startRecording((SurfaceView) MainActivity.this
-							.findViewById(R.id.camera_surface_view), output_file_path);
+					VideoHardwareRecorder.startRecording((SurfaceView) MainActivity.this
+							.findViewById(R.id.camera_surface_view), output_filename);
 					//FFAudioEncoder.testFFMPEG(output_filename);
 					//audio_software_recorder.startRecording(new File(output_dir));
-					((Button)v).setText("Stop Recording");
+					((Button)v).setText("Chunk Recording");
 				}
 			}
 			

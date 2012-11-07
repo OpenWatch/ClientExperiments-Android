@@ -7,8 +7,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import net.openwatch.openwatch2.MainActivity;
+import net.openwatch.openwatch2.R;
+
+import android.annotation.SuppressLint;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
+import android.media.MediaRecorder.OnInfoListener;
 import android.util.Log;
 import android.view.SurfaceView;
 
@@ -22,18 +27,25 @@ public class VideoHardwareRecorder {
 	
 	private static FileOutputStream camera_output_stream;
 	
+	// serves as file chunk suffix
+	private static int chunk_count = 0;
+	
 	/** 
 	 * Begin recording video the the output_file specified.
 	 * @param camera_surface_view the SurfaceView to attach the camera preview to
 	 * @param output_file the destination of the recording. This file will be created if it doesn't
 	 * all ready exist.
 	 */
-	public static void startRecording(SurfaceView camera_surface_view, File output_file){
-		
+	@SuppressLint("NewApi")
+	public static void startRecording(SurfaceView camera_surface_view, String output_path){
+		final SurfaceView final_camera_surface_view = camera_surface_view;
+		final String final_output_path = output_path; 
 		//camera_output_stream = getOutputStreamFromFile(output_file);
-		
+		chunk_count++;
 		// This is not buffered
-		camera_output_stream = getOrCreateFileOutputStream(output_file);
+		camera_output_stream = getOrCreateFileOutputStream(output_path + "_" + String.valueOf(chunk_count));
+		
+		Log.i(TAG,"startRecording " + output_path + "_" + String.valueOf(chunk_count));
 
 		if(camera == null)
 			camera = Camera.open();
@@ -41,6 +53,9 @@ public class VideoHardwareRecorder {
 			return; // The last video recording was not stopped properly
 		
 		// TODO: Camera setup method: autofocus, setRecordingHint etc.
+		Camera.Parameters params = camera.getParameters();
+		params.setRecordingHint(true);
+		camera.setParameters(params);
 		
 		try {
 			camera.setPreviewDisplay(camera_surface_view.getHolder());
@@ -53,6 +68,23 @@ public class VideoHardwareRecorder {
 		camera.unlock();
 		
 		video_recorder = new MediaRecorder();
+		/*
+		video_recorder.setOnInfoListener(new OnInfoListener(){
+
+			@Override
+			public void onInfo(MediaRecorder mr, int what, int extra) {
+				if(what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED){
+					//mr.stop();
+					Log.i(TAG, "max duration reached. Is recording: " + String.valueOf(VideoHardwareRecorder.is_recording));
+					chunk_count ++;
+					//String next_chunk_output_path = final_output_path + String.valueOf(chunk_count);
+					VideoHardwareRecorder.startRecording(final_camera_surface_view, final_output_path);
+				}
+				
+			}
+			
+		});
+		*/
 		
 		video_recorder.setCamera(camera);
 		video_recorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
@@ -61,6 +93,8 @@ public class VideoHardwareRecorder {
 		video_recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
 		video_recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
 		video_recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+		
+		//video_recorder.setMaxDuration(1000*5);
 		
 		try {
 			video_recorder.setOutputFile(camera_output_stream.getFD());
@@ -96,7 +130,7 @@ public class VideoHardwareRecorder {
 		camera.stopPreview();
 		camera.release();
 		camera = null;
-		
+		//chunk_count = 0;
 		try {
 			camera_output_stream.close();
 		} catch (IOException e) {
@@ -122,7 +156,9 @@ public class VideoHardwareRecorder {
 	}
 	*/
 	
-	public static FileOutputStream getOrCreateFileOutputStream(File output_file){
+	public static FileOutputStream getOrCreateFileOutputStream(String output_path){
+		File output_file = new File(output_path);
+		
 		if(!output_file.exists()){
 			try {
 				output_file.createNewFile();
