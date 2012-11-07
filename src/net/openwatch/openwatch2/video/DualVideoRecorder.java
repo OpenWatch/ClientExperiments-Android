@@ -23,6 +23,9 @@ public class DualVideoRecorder {
 		
 	private static FFDualVideoEncoder ffencoder;
 	
+	private static final int HQ_OUTPUT_WIDTH = 640;
+	private static final int HQ_OUTPUT_HEIGHT = 480;
+	
 	/** 
 	 * Begin recording video the the output_file specified.
 	 * @param camera_surface_view the SurfaceView to attach the camera preview to
@@ -37,7 +40,7 @@ public class DualVideoRecorder {
 		String hq_file_name = file_path + "_HQ.mpeg";
 		String lq_file_name = file_path + "_LQ.mpeg";
 		
-		ffencoder.initializeEncoder(hq_file_name, lq_file_name, 320, 240);
+		ffencoder.initializeEncoder(hq_file_name, lq_file_name, HQ_OUTPUT_WIDTH, HQ_OUTPUT_HEIGHT);
 		
 		//camera_output_stream = getOutputStreamFromFile(output_file);
 
@@ -47,7 +50,7 @@ public class DualVideoRecorder {
 		// TODO: Camera setup method: autofocus, setRecordingHint etc.
 		Camera.Parameters camera_parameters = camera.getParameters();
 		camera_parameters.setPreviewFormat(ImageFormat.NV21);
-		camera_parameters.setPreviewSize(320, 240);
+		camera_parameters.setPreviewSize(HQ_OUTPUT_WIDTH, HQ_OUTPUT_HEIGHT);
 		//camera_parameters.setRecordingHint(true);
 		camera.setParameters(camera_parameters);
 		
@@ -62,8 +65,7 @@ public class DualVideoRecorder {
 			
 			@Override
 			public void onPreviewFrame(byte[] data, Camera camera) {
-				//hq_ffencoder.encodeFrame(data);
-				//lq_ffencoder.encodeFrame(data);
+				ffencoder.encodeFrame(data);
 				//Log.d(TAG,"preview frame got");
 				
 			}
@@ -79,8 +81,7 @@ public class DualVideoRecorder {
 	public static void stopRecording(){
 		camera.stopPreview();
 		camera.setPreviewCallback(null);
-		//hq_ffencoder.finalizeEncoder();
-		//lq_ffencoder.finalizeEncoder();
+		ffencoder.finalizeEncoder();
 		camera.release();
 		camera = null;
 		is_recording = false;

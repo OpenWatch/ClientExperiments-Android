@@ -121,7 +121,11 @@ public class MainActivity extends Activity {
 					((Button)v).setText("Start Recording");
 					
 				} else {
-					String output_file_path = "/sdcard/ffmpeg_testing/" + String.valueOf(new Date().getTime());
+					String output_dir_string = "/sdcard/ffmpeg_testing";
+					File output_dir_file = new File(output_dir_string);
+					if(!output_dir_file.exists())
+						output_dir_file.mkdir();
+					String output_file_path = output_dir_string + "/" + String.valueOf(new Date().getTime());
 					
 					//audio_software_recorder.startRecording(output_file_path);
 					DualVideoRecorder.startRecording((SurfaceView) MainActivity.this

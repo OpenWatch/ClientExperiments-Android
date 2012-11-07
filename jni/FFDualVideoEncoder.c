@@ -11,9 +11,8 @@
 #include <libavutil/mathematics.h>
 #include <libavutil/samplefmt.h>
 #include <libswscale/swscale.h>
-//#include <swscale_internal.h>
 
-#define LOG_TAG "FFVideoEncoder"
+#define LOG_TAG "FFDualVideoEncoder"
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
@@ -24,7 +23,7 @@ AVPacket pkt;
 int i, out_size_hq, out_size_lq, x, y, outbuf_size_hq, outbuf_size_lq, ret;
 FILE *f_hq, *f_lq;
 uint8_t *outbuf_hq, *outbuf_lq;
-int had_output_hq=0, had_output_lq=0;
+int had_output_hq=0, had_output_lq=0, native_height_hq, native_width_hq;
 
 struct SwsContext *sws_ctx;
 
@@ -37,8 +36,8 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	native_filename_hq = (*env)->GetStringUTFChars(env, file_name_hq, NULL);
 	native_filename_lq = (*env)->GetStringUTFChars(env, file_name_lq, NULL);
 
-	int native_height_hq = (int) height;
-	int native_width_hq = (int) width;
+	native_height_hq = (int) height;
+	native_width_hq = (int) width;
 
 	int native_height_lq = native_height_hq / 2;
 	int native_width_lq = native_width_hq / 2;
@@ -61,9 +60,7 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	sws_ctx = sws_getContext(native_width_hq, native_height_hq, PIX_FMT_YUV420P, native_width_lq, native_height_lq, PIX_FMT_YUV420P, SWS_BILINEAR, NULL, NULL, NULL);
 
 	if (!sws_ctx) {
-		fprintf(stderr,
-				"Impossible to create scale context for the conversion "
-				"fmt:%s s:%dx%d -> fmt:%s s:%dx%d\n",
+		LOGE("Impossible to create scale context for the conversion fmt:%s s:%dx%d -> fmt:%s s:%dx%d\n",
 				av_get_pix_fmt_name(PIX_FMT_YUV420P), native_width_hq, native_height_hq,
 				av_get_pix_fmt_name(PIX_FMT_YUV420P), native_width_lq, native_height_lq);
 		ret = AVERROR(EINVAL);
@@ -71,7 +68,7 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	}
 
 	// HQ
-	frame_hq= avcodec_alloc_frame();
+	frame_hq = avcodec_alloc_frame();
 	c_hq = avcodec_alloc_context3(codec);
 	/* put sample parameters */
 	c_hq->bit_rate = 400000;
@@ -161,7 +158,7 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_encodeFrame(JNIEnv *
 	LOGI("Get native frame: is_copy: %d", is_copy);
 
 		// Encode HQ frame
-		fflush(stdout);
+		//fflush(stdout);
 		/* prepare a dummy image */
 		/* Y */
 		for(y=0;y<c_hq->height;y++) {
@@ -180,20 +177,24 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_encodeFrame(JNIEnv *
 			}
 		}
 
-		// TODO: Resize and encode LQ frame
+		/* scale to destination format */
 
-		/* convert to destination format */
-		sws_scale(sws_ctx, (const uint8_t * const*)frame_hq->data,
-		          frame_hq->linesize, 0, frame_lq->height, frame_lq->data, frame_lq->linesize);
+		sws_scale(sws_ctx, 									// the scaling context previously created with sws_getContext()
+				(const uint8_t * const*)frame_hq->data,		// the array containing the pointers to the planes of the source slice
+				  frame_hq->linesize, 						// the array containing the strides for each plane of the source image
+				  0, 										// the position in the source image of the slice to process, that is the number (counted starting from zero) in the image of the first row of the slice
+				  native_height_hq, 						// the height of the source slice, that is the number of rows in the slice
+				  frame_lq->data, 							// the array containing the pointers to the planes of the destination image
+				  frame_lq->linesize);						// the array containing the strides for each plane of the destination image
 
-		/* encode the image */
+		/* encode hq image */
 		out_size_hq = avcodec_encode_video(c_hq, outbuf_hq, outbuf_size_hq, frame_hq);
 		had_output_hq |= out_size_hq;
 
+		/* encode lq image */
 		out_size_lq = avcodec_encode_video(c_lq, outbuf_lq, outbuf_size_lq, frame_lq);
 		had_output_lq |= out_size_lq;
 
-		//printf("encoding frame %3d (size=%5d)\n", i, out_size);
 		fwrite(outbuf_hq, 1, out_size_hq, f_hq);
 		fwrite(outbuf_lq, 1, out_size_lq, f_lq);
 
@@ -210,7 +211,7 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_finalizeEncoder(JNIE
 		out_size_hq = avcodec_encode_video(c_hq, outbuf_hq, outbuf_size_hq, NULL);
 		had_output_hq |= out_size_hq;
 		//printf("write frame %3d (size=%5d)\n", i, out_size);
-		LOGI("write frame %3d (size=%5d)", i, out_size_hq);
+		LOGI("write hq frame %3d (size=%5d)", i, out_size_hq);
 		fwrite(outbuf_hq, 1, out_size_hq, f_hq);
 	}
 
@@ -220,7 +221,7 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_finalizeEncoder(JNIE
 			out_size_lq = avcodec_encode_video(c_lq, outbuf_lq, outbuf_size_lq, NULL);
 			had_output_lq |= out_size_lq;
 			//printf("write frame %3d (size=%5d)\n", i, out_size);
-			LOGI("write frame %3d (size=%5d)", i, out_size_lq);
+			LOGI("write lq frame %3d (size=%5d)", i, out_size_lq);
 			fwrite(outbuf_lq, 1, out_size_lq, f_lq);
 	}
 	// the out_size_lq and out_size_hq should be equal in size so
