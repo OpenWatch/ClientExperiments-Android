@@ -26,6 +26,8 @@ public class DualVideoRecorder {
 	private static final int HQ_OUTPUT_WIDTH = 640;
 	private static final int HQ_OUTPUT_HEIGHT = 480;
 	
+	private static long last_frame_time = 0;
+	
 	/** 
 	 * Begin recording video the the output_file specified.
 	 * @param camera_surface_view the SurfaceView to attach the camera preview to
@@ -66,8 +68,18 @@ public class DualVideoRecorder {
 			@Override
 			public void onPreviewFrame(byte[] data, Camera camera) {
 				ffencoder.encodeFrame(data);
-				//Log.d(TAG,"preview frame got");
-				
+				/*
+				if(last_frame_time == 0){
+					last_frame_time = new Date().getTime();
+				}
+				else{
+					//long fps = 1 / ((new Date().getTime() - last_frame_time) * 1000);
+					long frame_gap = new Date().getTime() - last_frame_time;
+					last_frame_time = new Date().getTime();
+					Log.d("FrameGap", String.valueOf(frame_gap));
+				}
+				Log.d(TAG,"preview frame got");
+				*/
 			}
 		});
 		

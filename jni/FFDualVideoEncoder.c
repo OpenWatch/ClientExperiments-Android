@@ -42,9 +42,11 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	int native_height_lq = native_height_hq / 2;
 	int native_width_lq = native_width_hq / 2;
 
+	avcodec_init();
 	avcodec_register_all();
 
-	int codec_id = CODEC_ID_MPEG1VIDEO;
+	//int codec_id = CODEC_ID_MPEG1VIDEO;
+	int codec_id = CODEC_ID_MPEG4;
 
 	LOGI("Encode video files %s , %s ", native_filename_hq, native_filename_lq);
 	/* find the mpeg1 video encoder */
@@ -80,7 +82,12 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	c_hq->gop_size = 10; /* emit one intra frame every ten frames */
 	c_hq->max_b_frames=1;
 	c_hq->pix_fmt = PIX_FMT_YUV420P;
+	/*
+	if(codec_id == CODEC_ID_H264)
+		        av_opt_set(c_hq->priv_data, "preset", "slow", 0);
 
+	in .8.1 we've got to set av_opt_set_dict
+	*/
 	// LQ
 	frame_lq= avcodec_alloc_frame();
 	c_lq = avcodec_alloc_context3(codec);
@@ -94,7 +101,10 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	c_lq->gop_size = 10; /* emit one intra frame every ten frames */
 	c_lq->max_b_frames=1;
 	c_lq->pix_fmt = PIX_FMT_YUV420P;
-
+	/*
+	if(codec_id == CODEC_ID_H264)
+			        av_opt_set(c_lq->priv_data, "preset", "slow", 0);
+	*/
 
 	LOGI("AVCodecContext initialize");
 
