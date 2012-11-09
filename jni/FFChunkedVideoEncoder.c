@@ -205,6 +205,8 @@ void Java_net_openwatch_openwatch2_video_FFChunkedVideoEncoder_finalizeEncoder(J
 		av_free(c);
 		av_free(frame->data[0]);
 		av_free(frame);
+
+		unlink(native_output_file2); // remove unused buffer file
 	}
 
 }
