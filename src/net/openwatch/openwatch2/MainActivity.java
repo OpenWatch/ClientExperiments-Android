@@ -10,6 +10,7 @@ import net.openwatch.openwatch2.audio.AudioStreamer;
 import net.openwatch.openwatch2.audio.FFAudioEncoder;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
+import net.openwatch.openwatch2.video.ChunkedVideoSoftwareRecorder;
 import net.openwatch.openwatch2.video.DualVideoRecorder;
 import net.openwatch.openwatch2.video.VideoHardwareRecorder;
 import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
@@ -33,6 +34,8 @@ public class MainActivity extends Activity {
 	private static final int max_chunks = 4;
 	private static int chunk_counter = 0;
 	private static String output_filename = "";
+	
+	private ChunkedVideoSoftwareRecorder video_recorder = new ChunkedVideoSoftwareRecorder();
 	
 	private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
 
@@ -120,32 +123,31 @@ public class MainActivity extends Activity {
 		
 		output_filename = output_dir + "/" + String.valueOf(new Date().getTime());
 		
+		
+		
 		Button test_btn = (Button) findViewById(R.id.test_btn);
 		test_btn.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
-				if(VideoHardwareRecorder.is_recording){
+				if(video_recorder.is_recording){
 					chunk_counter ++;
 					//audio_software_recorder.stopRecording();
-					VideoHardwareRecorder.stopRecording();
-					if(chunk_counter < max_chunks){
-						v.callOnClick();
-					}
-					else{
-						((Button)v).setText("Start Recording");
-					}
-					
-					
+					//VideoHardwareRecorder.stopRecording();
+					video_recorder.stopRecording();
+					((Button)v).setText("Start Recording");
+				
 				} else {
+					video_recorder.startRecording((SurfaceView) MainActivity.this
+							.findViewById(R.id.camera_surface_view), output_filename);
 					//String output_file_path = output_dir_string + "/" + String.valueOf(new Date().getTime());
 					
 					//audio_software_recorder.startRecording(output_file_path);
-					VideoHardwareRecorder.startRecording((SurfaceView) MainActivity.this
-							.findViewById(R.id.camera_surface_view), output_filename);
+					//VideoHardwareRecorder.startRecording((SurfaceView) MainActivity.this
+					//		.findViewById(R.id.camera_surface_view), output_filename);
 					//FFAudioEncoder.testFFMPEG(output_filename);
 					//audio_software_recorder.startRecording(new File(output_dir));
-					((Button)v).setText("Chunk Recording");
+					((Button)v).setText("Stop Recording");
 				}
 			}
 			

@@ -24,7 +24,7 @@ FILE *f;
 uint8_t *outbuf;
 int had_output=0;
 
-void Java_net_openwatch_openwatch2_video_FFVideoEncoder_initializeEncoder(JNIEnv * env, jobject this, jstring filename, jint width, jint height){
+void Java_net_openwatch_openwatch2_video_FFVideoEncoder_internalInitializeEncoder(JNIEnv * env, jobject this, jstring filename, jint width, jint height){
 
 	// Convert Java types
 	const jbyte *native_filename;
@@ -101,13 +101,13 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_initializeEncoder(JNIEnv
 }
 
 void Java_net_openwatch_openwatch2_video_FFVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray frame_data){
-	LOGI("Encode frame");
+	//LOGI("Encode frame");
 	// Convert Java types
 	int frame_data_length = (*env)->GetArrayLength(env, frame_data);
 	jboolean is_copy;
 	jbyte *native_frame_data = (*env)->GetByteArrayElements(env, frame_data, &is_copy);
 
-	LOGI("Get native frame: is_copy: %d", is_copy);
+	//LOGI("Get native frame: is_copy: %d", is_copy);
 
 	/* encode 1 second of video */
 		fflush(stdout);
@@ -132,7 +132,7 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_encodeFrame(JNIEnv * env
 		/* encode the image */
 		out_size = avcodec_encode_video(c, outbuf, outbuf_size, frame);
 		had_output |= out_size;
-		printf("encoding frame %3d (size=%5d)\n", i, out_size);
+		//printf("encoding frame %3d (size=%5d)\n", i, out_size);
 		fwrite(outbuf, 1, out_size, f);
 
 		(*env)->ReleaseByteArrayElements(env, frame_data, native_frame_data, 0);
