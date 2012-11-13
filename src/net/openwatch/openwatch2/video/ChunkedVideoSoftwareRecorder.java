@@ -135,7 +135,7 @@ public class ChunkedVideoSoftwareRecorder {
 		chunk ++;
 	}
 
-	public static void stopRecording() {
+	public void stopRecording() {
 		camera.stopPreview();
 		camera.setPreviewCallback(null);
 		//current_encoder.finalizeEncoder();

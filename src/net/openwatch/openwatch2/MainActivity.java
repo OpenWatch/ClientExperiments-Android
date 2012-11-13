@@ -10,6 +10,7 @@ import net.openwatch.openwatch2.audio.AudioStreamer;
 import net.openwatch.openwatch2.audio.FFAudioEncoder;
 import net.openwatch.openwatch2.constants.OWConstants;
 import net.openwatch.openwatch2.file.FileUtils;
+import net.openwatch.openwatch2.recorder.ChunkedAudioVideoSoftwareRecorder;
 import net.openwatch.openwatch2.video.ChunkedVideoSoftwareRecorder;
 import net.openwatch.openwatch2.video.DualVideoRecorder;
 import net.openwatch.openwatch2.video.VideoHardwareRecorder;
@@ -35,10 +36,12 @@ public class MainActivity extends Activity {
 	private static int chunk_counter = 0;
 	private static String output_filename = "";
 	
-	private ChunkedVideoSoftwareRecorder video_recorder = new ChunkedVideoSoftwareRecorder();
+	//private ChunkedVideoSoftwareRecorder video_recorder = new ChunkedVideoSoftwareRecorder();
 	
-	private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
+	//private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
 
+	private ChunkedAudioVideoSoftwareRecorder av_recorder = new ChunkedAudioVideoSoftwareRecorder();
+	
 	@SuppressLint("NewApi")
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -116,12 +119,9 @@ public class MainActivity extends Activity {
 			
 		});
 		 */
-		String output_dir = "/sdcard/ffmpeg_testing";
-		File output_dir_file = new File(output_dir);
-		if(!output_dir_file.exists())
-			output_dir_file.mkdir();
 		
-		output_filename = output_dir + "/" + String.valueOf(new Date().getTime());
+		
+		
 		
 		
 		
@@ -130,16 +130,28 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-				if(video_recorder.is_recording){
+				if(av_recorder.is_recording){
 					chunk_counter ++;
 					//audio_software_recorder.stopRecording();
 					//VideoHardwareRecorder.stopRecording();
-					video_recorder.stopRecording();
+					
+					//video_recorder.stopRecording();
+					//audio_software_recorder.stopRecording();
+					
+					av_recorder.stopRecording();
 					((Button)v).setText("Start Recording");
 				
 				} else {
-					video_recorder.startRecording((SurfaceView) MainActivity.this
+					String output_dir = "/sdcard/ffmpeg_testing";
+					File output_dir_file = new File(output_dir);
+					if(!output_dir_file.exists())
+						output_dir_file.mkdir();
+					output_filename = output_dir + "/" + String.valueOf(new Date().getTime());
+					av_recorder.startRecording((SurfaceView) MainActivity.this
 							.findViewById(R.id.camera_surface_view), output_filename);
+					//video_recorder.startRecording((SurfaceView) MainActivity.this
+					//		.findViewById(R.id.camera_surface_view), output_filename);
+					//audio_software_recorder.startRecording(output_filename + ".wav");
 					//String output_file_path = output_dir_string + "/" + String.valueOf(new Date().getTime());
 					
 					//audio_software_recorder.startRecording(output_file_path);
