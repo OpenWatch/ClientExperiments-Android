@@ -90,7 +90,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     c->sample_fmt = AV_SAMPLE_FMT_S16;
     c->bit_rate = 64000;
     c->sample_rate = 44100;
-    c->channels = 2;
+    c->channels = 1;
 
     // some formats want stream headers to be separate
     if(oc->oformat->flags & AVFMT_GLOBALHEADER)
@@ -399,7 +399,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
         ret = av_interleaved_write_frame(oc, &pkt);
     } else {
-    	LOGI("Encoding image");
+    	//LOGI("Encoding image");
         /* encode the image */
         out_size = avcodec_encode_video(c, video_outbuf, video_outbuf_size, picture);
         /* if zero size, it means the image was buffered */
@@ -414,10 +414,10 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.stream_index= st->index;
             pkt.data= video_outbuf;
             pkt.size= out_size;
-            LOGI("Prepared to write interleaved frame");
+            //LOGI("Prepared to write interleaved frame");
             /* write the compressed frame in the media file */
             ret = av_interleaved_write_frame(oc, &pkt);
-            LOGI("Wrote interleaved frame");
+            //LOGI("Wrote interleaved frame");
         } else {
             ret = 0;
         }
@@ -537,7 +537,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 
 	}
 
-	LOGI("Format frame data");
+	//LOGI("Format frame data");
 
 	/* compute current audio and video time */
 	if (audio_st)
@@ -563,10 +563,10 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	/* write interleaved audio and video frames */
 	if (!video_st || (video_st && audio_st && audio_pts < video_pts)) {
 		write_audio_frame(oc, audio_st);
-		LOGI("wrote audio frame");
+		//LOGI("wrote audio frame");
 	} else {
 		write_video_frame(oc, video_st);
-		LOGI("wrote video frame");
+		//LOGI("wrote video frame");
 	}
 
 	//LOGI("Get native frame: is_copy: %d", is_copy);
