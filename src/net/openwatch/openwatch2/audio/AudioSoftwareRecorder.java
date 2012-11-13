@@ -17,13 +17,11 @@ public class AudioSoftwareRecorder {
 	public static boolean is_recording = false;
 	
 	public void startRecording(String output_file_path) {
-		
 		String output_file_name = output_file_path + "_AUDIO.mpg";
 		RecorderTask audio_recorder_task = new RecorderTask(getFilePath(new File(output_file_name)));
 		audio_recorder_task.execute();
 		//recorder_thread = this.new recorderThread(output_file.getAbsolutePath());
 		//recorder_thread.start();
-
 	}
 
 	public void stopRecording() {
@@ -47,12 +45,12 @@ public class AudioSoftwareRecorder {
 		}
 		
 		//short[] audio_data = new short[buffer_size];
-		short[] audio_read_data;
+		public short[] audio_read_data;
 
 		@Override
 		protected Object doInBackground(Object... params) {
 			
-			 audio_encoder = new FFAudioEncoder();
+			audio_encoder = new FFAudioEncoder();
 			
 			int samples_per_frame = audio_encoder.initializeEncoder(filename);
 			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples");

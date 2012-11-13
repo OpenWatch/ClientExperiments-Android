@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import net.openwatch.openwatch2.audio.AudioSoftwarePoller;
+import net.openwatch.openwatch2.audio.AudioSoftwareRecorder;
 import net.openwatch.openwatch2.video.FFChunkedVideoEncoder;
 
 import android.graphics.ImageFormat;
@@ -38,7 +40,11 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	private final int output_width = 320;
 	private final int output_height = 240;
 	
+	private AudioSoftwarePoller audio_recorder;
+	
 	public ChunkedAudioVideoSoftwareRecorder(){
+		
+		audio_recorder = new AudioSoftwarePoller();
 		
 	}
 	
@@ -46,6 +52,14 @@ public class ChunkedAudioVideoSoftwareRecorder {
 			String output_filename_base) {
 		
 		chunk = 1;
+		
+		audio_recorder.recorderTask.samples_per_frame = 1152;
+		audio_recorder.startRecording();
+		// ensure A frame is ready before commencing video preview
+		// hacky. Get rid of it
+		while(audio_recorder.recorderTask.audio_read_data == null){
+			continue;
+		}
 		
 		this.output_filename_base = output_filename_base;
 		/*
@@ -92,9 +106,9 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		camera.setPreviewCallback(new Camera.PreviewCallback() {
 			
 			@Override
-			public void onPreviewFrame(byte[] data, Camera camera) {
+			public void onPreviewFrame(byte[] video_frame_data, Camera camera) {
 				//Log.d(TAG,"Frame received");
-				ffencoder.encodeFrame(data);
+				ffencoder.encodeFrame(video_frame_data, audio_recorder.recorderTask.audio_read_data);
 				chunk_frame_count++;
 				if(chunk_frame_count >= chunk_frame_max){
 					chunk_frame_count = 0;

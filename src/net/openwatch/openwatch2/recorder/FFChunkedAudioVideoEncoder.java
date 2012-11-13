@@ -25,7 +25,7 @@ public class FFChunkedAudioVideoEncoder {
 	
 	public native void internalInitializeEncoder(String filename1, String filename2, int width, int height);
 	public native void shiftEncoders(String new_filename);
-	public native void encodeFrame(byte[] data);
+	public native void encodeFrame(byte[] video_data, short[] audio_data);
 	public native void finalizeEncoder(int is_final); // 0: false, !0: true
 
 }

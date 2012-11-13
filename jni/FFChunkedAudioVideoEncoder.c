@@ -173,7 +173,8 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     c = st->codec;
 
-    get_audio_frame(samples, audio_input_frame_size, c->channels);
+    // we'll populate samples in encodeFrame(...)
+    //get_audio_frame(samples, audio_input_frame_size, c->channels);
 
     pkt.size= avcodec_encode_audio(c, audio_outbuf, audio_outbuf_size, samples);
 
@@ -224,8 +225,8 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
     /* put sample parameters */
     c->bit_rate = 400000;
     /* resolution must be a multiple of two */
-    c->width = 352;
-    c->height = 288;
+    c->width = 320;
+    c->height = 240;
     /* time base: this is the fundamental unit of time (in seconds) in terms
        of which frame timestamps are represented. for fixed-fps content,
        timebase should be 1/framerate and timestamp increments should be
@@ -359,9 +360,11 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
            frames if using B frames, so we get the last frames by
            passing the same picture again */
     } else {
+    	/* DO NOT NEED. WE ALWAYS ROLL W/ YUV420P
+
         if (c->pix_fmt != PIX_FMT_YUV420P) {
-            /* as we only generate a YUV420P picture, we must convert it
-               to the codec pixel format if needed */
+            // as we only generate a YUV420P picture, we must convert it
+            //   to the codec pixel format if needed
             if (img_convert_ctx == NULL) {
                 img_convert_ctx = sws_getContext(c->width, c->height,
                                                  PIX_FMT_YUV420P,
@@ -379,6 +382,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         } else {
             fill_yuv_image(picture, frame_count, c->width, c->height);
         }
+        */
     }
 
 
@@ -395,6 +399,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
         ret = av_interleaved_write_frame(oc, &pkt);
     } else {
+    	LOGI("Encoding image");
         /* encode the image */
         out_size = avcodec_encode_video(c, video_outbuf, video_outbuf_size, picture);
         /* if zero size, it means the image was buffered */
@@ -409,9 +414,10 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.stream_index= st->index;
             pkt.data= video_outbuf;
             pkt.size= out_size;
-
+            LOGI("Prepared to write interleaved frame");
             /* write the compressed frame in the media file */
             ret = av_interleaved_write_frame(oc, &pkt);
+            LOGI("Wrote interleaved frame");
         } else {
             ret = 0;
         }
@@ -494,12 +500,44 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 
 }
 
-void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray frame_data, jint encoder){
+void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data, jshortArray audio_frame_data){
 	//LOGI("Encode frame");
 	// Convert Java types
-	int frame_data_length = (*env)->GetArrayLength(env, frame_data);
-	jboolean is_copy;
-	jbyte *native_frame_data = (*env)->GetByteArrayElements(env, frame_data, &is_copy);
+	// video
+	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
+	// audio
+	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
+
+	// write video_frame_data to AVFrame
+	if(video_st){
+		c = video_st->codec; // don't need to do this each frame?
+
+		for(y=0;y<c->height;y++) {
+			for(x=0;x<c->width;x++) {
+				picture->data[0][y * picture->linesize[0] + x] = native_video_frame_data[0];
+				native_video_frame_data++;
+			}
+		}
+
+		/* Cb and Cr */
+		for(y=0;y<c->height/2;y++) {
+			for(x=0;x<c->width/2;x++) {
+				picture->data[2][y * picture->linesize[2] + x] = native_video_frame_data[0];
+				picture->data[1][y * picture->linesize[1] + x] = native_video_frame_data[1];
+				native_video_frame_data+=2;
+			}
+		}
+	}
+	// write audio_frame_data to another AVFrame
+	if(audio_st){
+		for(y=0;y<audio_input_frame_size;y++){
+			samples[y] = (int)(native_audio_frame_data[0]);
+			native_audio_frame_data++;
+		}
+
+	}
+
+	LOGI("Format frame data");
 
 	/* compute current audio and video time */
 	if (audio_st)
@@ -525,13 +563,15 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	/* write interleaved audio and video frames */
 	if (!video_st || (video_st && audio_st && audio_pts < video_pts)) {
 		write_audio_frame(oc, audio_st);
+		LOGI("wrote audio frame");
 	} else {
 		write_video_frame(oc, video_st);
+		LOGI("wrote video frame");
 	}
 
 	//LOGI("Get native frame: is_copy: %d", is_copy);
 
-	(*env)->ReleaseByteArrayElements(env, frame_data, native_frame_data, 0);
+	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeEncoder(JNIEnv * env, jobject this, jint is_final){
