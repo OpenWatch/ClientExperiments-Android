@@ -53,7 +53,7 @@ AVCodecContext* initializeAVCodecContext(AVCodecContext *c);
 
 /* 5 seconds stream duration */
 #define STREAM_DURATION   5.0
-#define STREAM_FRAME_RATE 25 /* 25 images/s */
+#define STREAM_FRAME_RATE 15 /* 25 images/s */
 #define STREAM_NB_FRAMES  ((int)(STREAM_DURATION * STREAM_FRAME_RATE))
 #define STREAM_PIX_FMT PIX_FMT_YUV420P /* default pix_fmt */
 
@@ -191,7 +191,7 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     /* write the compressed frame in the media file */
     // TESTING: force Audio frame PTS to Video frame PTS
-    pkt.pts = last_video_frame_pts;
+    //pkt.pts = last_video_frame_pts;
     LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration); // int64_t. in AVStream->time_base units
     if (av_interleaved_write_frame(oc, &pkt) != 0) {
         fprintf(stderr, "Error while writing audio frame\n");
@@ -522,6 +522,8 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
 	// audio
 	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
+	int audio_frame_data_length = (*env)->GetArrayLength(env, audio_frame_data);
+	LOGI("Incoming audio frame length: %d",audio_frame_data_length);
 
 	// write video_frame_data to AVFrame
 	if(video_st){
@@ -545,12 +547,14 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	}
 	// write audio_frame_data to another AVFrame
 	if(audio_st){
+		int audio_sample_count = 0;
 		//LOG("Audio frame size: %d", audio_input_frame_size);
 		for(y=0;y<audio_input_frame_size;y++){
 			samples[y] = (int)(native_audio_frame_data[0]);
 			native_audio_frame_data++;
+			audio_sample_count++;
 		}
-
+		LOGI("Audio sample count: %d", audio_sample_count);
 	}
 
 	//LOGI("Format frame data");

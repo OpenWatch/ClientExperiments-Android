@@ -4,11 +4,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 import net.openwatch.openwatch2.audio.AudioSoftwarePoller;
 import net.openwatch.openwatch2.audio.AudioSoftwareRecorder;
 import net.openwatch.openwatch2.video.FFChunkedVideoEncoder;
 
+import android.annotation.SuppressLint;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
@@ -36,7 +38,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	
 	private String output_filename_base = "";
 	
-	private final String file_ext = ".mpg";
+	private final String file_ext = ".mp4";
 	private final int output_width = 320;
 	private final int output_height = 240;
 	
@@ -48,6 +50,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		
 	}
 	
+	@SuppressLint("NewApi")
 	public void startRecording(SurfaceView camera_surface_view,
 			String output_filename_base) {
 		
@@ -89,6 +92,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		Camera.Parameters camera_parameters = camera.getParameters();
 		camera_parameters.setPreviewFormat(ImageFormat.NV21);
 		camera_parameters.setPreviewSize(output_width, output_height);
+		List<int[]> fpsRanges = camera_parameters.getSupportedPreviewFpsRange();
+		camera_parameters.setPreviewFpsRange(15000,15000);
 		//int max_fps = camera_parameters.getSupportedPreviewFpsRange().get(Camera.Parameters.PREVIEW_FPS_MAX_INDEX);
 		//int min_fps = 
 		//camera_parameters.setPreviewFpsRange(min, max)
