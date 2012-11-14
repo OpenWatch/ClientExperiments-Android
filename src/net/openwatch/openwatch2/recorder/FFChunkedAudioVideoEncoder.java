@@ -19,14 +19,14 @@ public class FFChunkedAudioVideoEncoder {
 	/*
 	 * Returns the audio frame size in samples
 	 */
-	public int initializeEncoder(String filename1, String filename2, int width, int height){
+	public int initializeEncoder(String filename1, String filename2, int width, int height, int fps){
 		output_filename = filename1;
-		return internalInitializeEncoder(filename1, filename2, width, height);
+		return internalInitializeEncoder(filename1, filename2, width, height, fps);
 	}
 	
 	public static native void testFFMPEG(String filename);
 	
-	public native int internalInitializeEncoder(String filename1, String filename2, int width, int height);
+	public native int internalInitializeEncoder(String filename1, String filename2, int width, int height, int fps);
 	public native void shiftEncoders(String new_filename);
 	public native void encodeVideoFrame(byte[] video_data);
 	public native void encodeAudioFrame(short[] audio_data);

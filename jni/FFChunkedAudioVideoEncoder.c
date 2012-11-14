@@ -53,8 +53,8 @@ AVCodecContext* initializeAVCodecContext(AVCodecContext *c);
 
 /* 5 seconds stream duration */
 #define STREAM_DURATION   5.0
-#define STREAM_FRAME_RATE 15 /* 25 images/s */
-#define STREAM_NB_FRAMES  ((int)(STREAM_DURATION * STREAM_FRAME_RATE))
+#define STREAM_FRAME_RATE 15 /* 15 images/s UNUSED */
+#define STREAM_NB_FRAMES  ((int)(STREAM_DURATION * STREAM_FRAME_RATE)) // UNUSED
 #define STREAM_PIX_FMT PIX_FMT_YUV420P /* default pix_fmt */
 
 static int sws_flags = SWS_BICUBIC;
@@ -71,6 +71,10 @@ int audio_input_frame_size;
 // TESTING
 int64_t last_video_frame_pts;
 
+// allow variable frame_rate based on device capabilities
+int DEVICE_FRAME_RATE = 25;
+
+// Ensure no simultaneous calls to av_interleaved_write_frame
 int safe_to_encode = 1;
 
 /*
@@ -241,7 +245,7 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
        of which frame timestamps are represented. for fixed-fps content,
        timebase should be 1/framerate and timestamp increments should be
        identically 1. */
-    c->time_base.den = STREAM_FRAME_RATE;
+    c->time_base.den = DEVICE_FRAME_RATE;
     c->time_base.num = 1;
     c->gop_size = 12; /* emit one intra frame every twelve frames at most */
     c->pix_fmt = STREAM_PIX_FMT;
@@ -461,12 +465,14 @@ static void close_video(AVFormatContext *oc, AVStream *st)
  *  from ffmpeg's muxing-example.c *
  ***********************************/
 
-void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_internalInitializeEncoder(JNIEnv * env, jobject this, jstring filename1, jstring filename2, jint width, jint height){
+void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_internalInitializeEncoder(JNIEnv * env, jobject this, jstring filename1, jstring filename2, jint width, jint height, jint fps){
 
 	// Convert Java types
 	//const jbyte *native_filename1, *native_filename2;
 	native_output_file1 = (*env)->GetStringUTFChars(env, filename1, NULL);
 	native_output_file2 = (*env)->GetStringUTFChars(env, filename2, NULL);
+
+	DEVICE_FRAME_RATE = (int) fps;
 
 	output_height = (int) height;
 	output_width = (int) width;
@@ -501,6 +507,9 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 	}
 	*/
 
+	while(safe_to_encode != 1) // temp hack
+			continue;
+	safe_to_encode = 0;
 	finalizeAVFormatContext();
 
 	const jbyte *native_new_filename;
@@ -512,15 +521,18 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 
 	initializeAVFormatContext();
 
+	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVideoFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data){
+	if(safe_to_encode != 1)
+			LOGI("COLLISION!-V");
 	while(safe_to_encode != 1) // temp hack
 		continue;
 
 	safe_to_encode = 0;
 
-	LOGI("ENCODE-VIDEO-0");
+	//LOGI("ENCODE-VIDEO-0");
 	// Convert Java types
 
 	frame_count ++;
@@ -613,15 +625,17 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVid
 	//LOGI("Write video frame!");
 
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
-	LOGI("ENCODE-VIDEO-1");
+	//LOGI("ENCODE-VIDEO-1");
 	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeAudioFrame(JNIEnv * env, jobject this, jshortArray audio_frame_data){
+	if(safe_to_encode != 1)
+		LOGI("COLLISION!-A");
 	while(safe_to_encode != 1) // temp hack
 			continue;
 	safe_to_encode = 0;
-	LOGI("ENCODE-AUDIO-0");
+	//LOGI("ENCODE-AUDIO-0");
 	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
 
 	if(audio_st){
@@ -641,11 +655,14 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeAud
 
 	(*env)->ReleaseByteArrayElements(env, audio_frame_data, native_audio_frame_data, 0);
 
-	LOGI("ENCODE-AUDIO-1");
+	//LOGI("ENCODE-AUDIO-1");
 	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeEncoder(JNIEnv * env, jobject this, jint is_final){
+	while(safe_to_encode != 1) // temp hack
+				continue;
+		safe_to_encode = 0;
 	LOGI("finalize file %s", native_output_file1);
 
 	int native_is_final = (int) is_final;
@@ -690,7 +707,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeE
 			unlink(native_output_file2); // remove unused buffer file
 	    }
 	    finalizeAVFormatContext();
-
+	    safe_to_encode = 1;
 	    return 0;
 }
 
