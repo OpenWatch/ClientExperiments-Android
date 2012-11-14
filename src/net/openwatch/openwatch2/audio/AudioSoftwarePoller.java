@@ -40,7 +40,10 @@ public class AudioSoftwarePoller {
 		
 		public int samples_per_frame;
 		
+		public short[] audio_read_data_buffer;
 		public short[] audio_read_data;
+		
+		public boolean audio_read_data_ready = false; // is audio_read_data safe for reading
 		
 		public RecorderTask(){
 		}
@@ -57,7 +60,8 @@ public class AudioSoftwarePoller {
 			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples");
 			Log.i(TAG,"audio frame size: " + String.valueOf(samples_per_frame));
 			notification_period = samples_per_frame;
-			audio_read_data = new short[samples_per_frame];
+			audio_read_data_buffer = new short[samples_per_frame]; // filled directly by hardware
+			audio_read_data = new short[samples_per_frame]; // copied after complete frame read
 			
 			AudioRecord audio_recorder;			
 			audio_recorder = new AudioRecord(
@@ -104,7 +108,11 @@ public class AudioSoftwarePoller {
 	        {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
-	            audio_recorder.read(audio_read_data, 0, samples_per_frame);
+	            audio_recorder.read(audio_read_data_buffer, 0, samples_per_frame);
+	            audio_read_data_ready = false;
+	            System.arraycopy( audio_read_data_buffer, 0, audio_read_data, 0, audio_read_data_buffer.length );
+	            audio_read_data_ready = true;
+	            Log.i("FRAME", "audio frame polled");
 	            //audio_encoder.encodeFrame(audio_read_data);
 	            // this is sloppy - more data is passed to encodeFrame than is used
 	        }

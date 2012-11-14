@@ -53,14 +53,6 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		
 		chunk = 1;
 		
-		audio_recorder.recorderTask.samples_per_frame = 1152;
-		audio_recorder.startRecording();
-		// ensure A frame is ready before commencing video preview
-		// hacky. Get rid of it
-		while(audio_recorder.recorderTask.audio_read_data == null){
-			continue;
-		}
-		
 		this.output_filename_base = output_filename_base;
 		/*
 		ffencoder1 = new FFVideoEncoder();
@@ -73,9 +65,19 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		 */
 		
 		ffencoder = new FFChunkedAudioVideoEncoder();
-		ffencoder.initializeEncoder(output_filename_base + "_" + String.valueOf(chunk) + file_ext, 
+		int num_samples = ffencoder.initializeEncoder(output_filename_base + "_" + String.valueOf(chunk) + file_ext, 
 				output_filename_base + "_" + String.valueOf(chunk + 1) + file_ext,
 				output_width, output_height);
+		
+		audio_recorder.recorderTask.samples_per_frame = num_samples;
+		Log.i("AUDIO_FRAME_SIZE", "audio frame size: "+ String.valueOf(num_samples));
+		audio_recorder.startRecording();
+		
+		// ensure A frame is ready before commencing video preview
+		// hacky. Get rid of it
+		while(audio_recorder.recorderTask.audio_read_data == null){
+			continue;
+		}
 		
 		chunk += 2;
 		
@@ -107,7 +109,9 @@ public class ChunkedAudioVideoSoftwareRecorder {
 			
 			@Override
 			public void onPreviewFrame(byte[] video_frame_data, Camera camera) {
-				//Log.d(TAG,"Frame received");
+				Log.d("FRAME","video frame polled");
+				while(!audio_recorder.recorderTask.audio_read_data_ready)
+					continue; // make sure we aren't writing to audio_read_data
 				ffencoder.encodeFrame(video_frame_data, audio_recorder.recorderTask.audio_read_data);
 				chunk_frame_count++;
 				if(chunk_frame_count >= chunk_frame_max){
@@ -151,10 +155,11 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		chunk ++;
 	}
 
-	public static void stopRecording() {
+	public void stopRecording() {
 		camera.stopPreview();
 		camera.setPreviewCallback(null);
 		//current_encoder.finalizeEncoder();
+		audio_recorder.stopRecording();
 		ffencoder.finalizeEncoder(1);
 		camera.release();
 		camera = null;

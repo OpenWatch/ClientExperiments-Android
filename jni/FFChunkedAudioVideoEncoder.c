@@ -68,6 +68,9 @@ uint8_t *audio_outbuf;
 int audio_outbuf_size;
 int audio_input_frame_size;
 
+// TESTING
+int64_t last_video_frame_pts;
+
 /*
  * add an audio output stream
  */
@@ -178,13 +181,18 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     pkt.size= avcodec_encode_audio(c, audio_outbuf, audio_outbuf_size, samples);
 
-    if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE)
+    if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE){
         pkt.pts= av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
+        LOGI("audio pkt.pts set: %d", pkt.pts);
+    }
     pkt.flags |= AV_PKT_FLAG_KEY;
     pkt.stream_index= st->index;
     pkt.data= audio_outbuf;
 
     /* write the compressed frame in the media file */
+    // TESTING: force Audio frame PTS to Video frame PTS
+    pkt.pts = last_video_frame_pts;
+    LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration); // int64_t. in AVStream->time_base units
     if (av_interleaved_write_frame(oc, &pkt) != 0) {
         fprintf(stderr, "Error while writing audio frame\n");
         exit(1);
@@ -416,6 +424,9 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.size= out_size;
             //LOGI("Prepared to write interleaved frame");
             /* write the compressed frame in the media file */
+            LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d",pkt.pts, pkt.dts, pkt.duration);
+            // TESTING
+            last_video_frame_pts = pkt.pts;
             ret = av_interleaved_write_frame(oc, &pkt);
             //LOGI("Wrote interleaved frame");
         } else {
@@ -426,7 +437,8 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
-    frame_count++;
+    //frame_count++;
+    // stream of indeterminate length
 }
 
 static void close_video(AVFormatContext *oc, AVStream *st)
@@ -503,6 +515,9 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data, jshortArray audio_frame_data){
 	//LOGI("Encode frame");
 	// Convert Java types
+
+	frame_count ++;
+
 	// video
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
 	// audio
@@ -530,6 +545,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	}
 	// write audio_frame_data to another AVFrame
 	if(audio_st){
+		//LOG("Audio frame size: %d", audio_input_frame_size);
 		for(y=0;y<audio_input_frame_size;y++){
 			samples[y] = (int)(native_audio_frame_data[0]);
 			native_audio_frame_data++;
@@ -549,6 +565,12 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 		video_pts = (double)video_st->pts.val * video_st->time_base.num / video_st->time_base.den;
 	else
 		video_pts = 0.0;
+
+	if(video_pts && audio_pts)
+		LOGI("video_pts: %" PRId64 " audio_pts: %" PRId64,video_pts,audio_pts); // stream.pts -> AVFrac ->val -> int64_t
+	else
+		LOGI("video_pts or audio_pts missing");
+
 	/*
 	if ((!audio_st || audio_pts >= STREAM_DURATION) &&
 		(!video_st || video_pts >= STREAM_DURATION))
@@ -561,6 +583,12 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	}
 
 	/* write interleaved audio and video frames */
+	// Test - we know we'll have a video and audio frame on each call
+	write_video_frame(oc, video_st);
+	write_audio_frame(oc, audio_st);
+
+	// This logic drops audio and video frames
+	/*
 	if (!video_st || (video_st && audio_st && audio_pts < video_pts)) {
 		write_audio_frame(oc, audio_st);
 		//LOGI("wrote audio frame");
@@ -568,7 +596,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 		write_video_frame(oc, video_st);
 		//LOGI("wrote video frame");
 	}
-
+	*/
 	//LOGI("Get native frame: is_copy: %d", is_copy);
 
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
@@ -651,7 +679,7 @@ void finalizeAVFormatContext(){
 
 // Method to be called after beginning new chunk
 // to initialize AVFormatContext with new chunk filename
-void initializeAVFormatContext(){
+int initializeAVFormatContext(){
 
 	/*
 	// test file opening
@@ -670,6 +698,8 @@ void initializeAVFormatContext(){
 	native_output_file1 = test_path;
 	// END TEST
 	*/
+
+	frame_count = 0;
 
 	av_register_all();
 
@@ -727,6 +757,11 @@ void initializeAVFormatContext(){
 	/* write the stream header, if any */
 	av_write_header(oc);
 	LOGI("5. write file header");
+
+	LOGI("video frame size: %d, audio frame size: %d", video_st->codec->frame_size, audio_st->codec->frame_size);
+
+	//return audio_input_frame_size; // 49
+	return audio_st->codec->frame_size; // also 49
 }
 
 // From ChunkedVideo demo

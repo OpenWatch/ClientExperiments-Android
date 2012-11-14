@@ -38,7 +38,7 @@ public class MainActivity extends Activity {
 	
 	//private ChunkedVideoSoftwareRecorder video_recorder = new ChunkedVideoSoftwareRecorder();
 	
-	//private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
+	private AudioSoftwareRecorder audio_software_recorder = new AudioSoftwareRecorder();
 
 	private ChunkedAudioVideoSoftwareRecorder av_recorder = new ChunkedAudioVideoSoftwareRecorder();
 	
@@ -119,19 +119,13 @@ public class MainActivity extends Activity {
 			
 		});
 		 */
-		
-		
-		
-		
-		
-		
 		Button test_btn = (Button) findViewById(R.id.test_btn);
 		test_btn.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
 				if(av_recorder.is_recording){
-					chunk_counter ++;
+					//chunk_counter ++;
 					//audio_software_recorder.stopRecording();
 					//VideoHardwareRecorder.stopRecording();
 					
