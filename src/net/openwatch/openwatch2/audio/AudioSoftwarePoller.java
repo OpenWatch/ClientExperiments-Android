@@ -3,6 +3,8 @@ package net.openwatch.openwatch2.audio;
 import java.io.File;
 import java.io.IOException;
 
+import net.openwatch.openwatch2.recorder.FFChunkedAudioVideoEncoder;
+
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.AudioRecord.OnRecordPositionUpdateListener;
@@ -18,6 +20,12 @@ public class AudioSoftwarePoller {
 	
 	public RecorderTask recorderTask = new RecorderTask();
 	
+	private FFChunkedAudioVideoEncoder ffencoder;
+	
+	public AudioSoftwarePoller(FFChunkedAudioVideoEncoder ffencoder){
+		this.ffencoder = ffencoder;
+	}
+	
 	public void startRecording() {
 		recorderTask.execute();
 		//recorder_thread = this.new recorderThread(output_file.getAbsolutePath());
@@ -32,7 +40,7 @@ public class AudioSoftwarePoller {
 	// Thread to run audio sampling in
 	public class RecorderTask extends AsyncTask {
 		
-		FFAudioEncoder audio_encoder;
+		//FFAudioEncoder audio_encoder;
 			
 		private int notification_period; // in samples
 				
@@ -54,7 +62,7 @@ public class AudioSoftwarePoller {
 		@Override
 		protected Object doInBackground(Object... params) {
 			
-			audio_encoder = new FFAudioEncoder();
+			//audio_encoder = new FFAudioEncoder();
 			
 			//int samples_per_frame = audio_encoder.initializeEncoder();
 			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples");
@@ -109,9 +117,10 @@ public class AudioSoftwarePoller {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
 	            audio_recorder.read(audio_read_data_buffer, 0, samples_per_frame);
-	            audio_read_data_ready = false;
-	            System.arraycopy( audio_read_data_buffer, 0, audio_read_data, 0, audio_read_data_buffer.length );
-	            audio_read_data_ready = true;
+	            ffencoder.encodeAudioFrame(audio_read_data_buffer);
+	            //audio_read_data_ready = false;
+	            //System.arraycopy( audio_read_data_buffer, 0, audio_read_data, 0, audio_read_data_buffer.length );
+	            //audio_read_data_ready = true;
 	            Log.i("FRAME", "audio frame polled");
 	            //audio_encoder.encodeFrame(audio_read_data);
 	            // this is sloppy - more data is passed to encodeFrame than is used

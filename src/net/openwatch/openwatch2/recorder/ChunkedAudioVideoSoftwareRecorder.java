@@ -43,12 +43,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	private final int output_height = 240;
 	
 	private AudioSoftwarePoller audio_recorder;
-	
-	public ChunkedAudioVideoSoftwareRecorder(){
-		
-		audio_recorder = new AudioSoftwarePoller();
-		
-	}
+
 	
 	@SuppressLint("NewApi")
 	public void startRecording(SurfaceView camera_surface_view,
@@ -72,6 +67,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				output_filename_base + "_" + String.valueOf(chunk + 1) + file_ext,
 				output_width, output_height);
 		
+		audio_recorder = new AudioSoftwarePoller(ffencoder);
 		audio_recorder.recorderTask.samples_per_frame = num_samples;
 		Log.i("AUDIO_FRAME_SIZE", "audio frame size: "+ String.valueOf(num_samples));
 		audio_recorder.startRecording();
@@ -115,9 +111,10 @@ public class ChunkedAudioVideoSoftwareRecorder {
 			@Override
 			public void onPreviewFrame(byte[] video_frame_data, Camera camera) {
 				Log.d("FRAME","video frame polled");
-				while(!audio_recorder.recorderTask.audio_read_data_ready)
-					continue; // make sure we aren't writing to audio_read_data
-				ffencoder.encodeFrame(video_frame_data, audio_recorder.recorderTask.audio_read_data);
+				//while(!audio_recorder.recorderTask.audio_read_data_ready)
+					//continue; // make sure we aren't writing to audio_read_data
+				ffencoder.encodeVideoFrame(video_frame_data);
+				// audio_recorder.recorderTask.audio_read_data
 				chunk_frame_count++;
 				if(chunk_frame_count >= chunk_frame_max){
 					chunk_frame_count = 0;

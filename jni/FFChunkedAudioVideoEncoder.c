@@ -71,6 +71,8 @@ int audio_input_frame_size;
 // TESTING
 int64_t last_video_frame_pts;
 
+int safe_to_encode = 1;
+
 /*
  * add an audio output stream
  */
@@ -512,8 +514,13 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 
 }
 
-void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data, jshortArray audio_frame_data){
-	//LOGI("Encode frame");
+void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVideoFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data){
+	while(safe_to_encode != 1) // temp hack
+		continue;
+
+	safe_to_encode = 0;
+
+	LOGI("ENCODE-VIDEO-0");
 	// Convert Java types
 
 	frame_count ++;
@@ -521,9 +528,9 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	// video
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
 	// audio
-	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
-	int audio_frame_data_length = (*env)->GetArrayLength(env, audio_frame_data);
-	LOGI("Incoming audio frame length: %d",audio_frame_data_length);
+	//jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
+	//int audio_frame_data_length = (*env)->GetArrayLength(env, audio_frame_data);
+	//LOGI("Incoming audio frame length: %d",audio_frame_data_length);
 
 	// write video_frame_data to AVFrame
 	if(video_st){
@@ -545,6 +552,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 			}
 		}
 	}
+	/*
 	// write audio_frame_data to another AVFrame
 	if(audio_st){
 		int audio_sample_count = 0;
@@ -556,7 +564,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 		}
 		LOGI("Audio sample count: %d", audio_sample_count);
 	}
-
+	*/
 	//LOGI("Format frame data");
 
 	/* compute current audio and video time */
@@ -589,7 +597,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	/* write interleaved audio and video frames */
 	// Test - we know we'll have a video and audio frame on each call
 	write_video_frame(oc, video_st);
-	write_audio_frame(oc, audio_st);
+	//write_audio_frame(oc, audio_st);
 
 	// This logic drops audio and video frames
 	/*
@@ -602,8 +610,39 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeFra
 	}
 	*/
 	//LOGI("Get native frame: is_copy: %d", is_copy);
+	//LOGI("Write video frame!");
 
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
+	LOGI("ENCODE-VIDEO-1");
+	safe_to_encode = 1;
+}
+
+void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeAudioFrame(JNIEnv * env, jobject this, jshortArray audio_frame_data){
+	while(safe_to_encode != 1) // temp hack
+			continue;
+	safe_to_encode = 0;
+	LOGI("ENCODE-AUDIO-0");
+	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
+
+	if(audio_st){
+		int audio_sample_count = 0;
+		//LOG("Audio frame size: %d", audio_input_frame_size);
+		for(y=0;y<audio_input_frame_size;y++){
+			samples[y] = (int)(native_audio_frame_data[0]);
+			native_audio_frame_data++;
+			audio_sample_count++;
+		}
+		//LOGI("Audio sample count: %d", audio_sample_count);
+
+		write_audio_frame(oc, audio_st);
+		//LOGI("Write audio frame!");
+	}
+
+
+	(*env)->ReleaseByteArrayElements(env, audio_frame_data, native_audio_frame_data, 0);
+
+	LOGI("ENCODE-AUDIO-1");
+	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeEncoder(JNIEnv * env, jobject this, jint is_final){
