@@ -10,8 +10,6 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/mathematics.h>
 #include <libavutil/samplefmt.h>
-
-// Muxing
 #include "libavformat/avformat.h"
 #include "libswscale/swscale.h"
 
@@ -45,6 +43,11 @@ int output_height;
 
 AVCodecContext* initializeAVCodecContext(AVCodecContext *c);
 
+// TESTING
+int64_t last_video_frame_pts;
+int DEVICE_FRAME_RATE = 25;  // allow variable frame_rate based on device capabilities
+int safe_to_encode = 1; // Ensure no collisions when writing audio / video from separate threads
+
 /***********************************
  *   AUXILLARY MUXING METHODS      *
  *  from ffmpeg's muxing-example.c *
@@ -67,15 +70,6 @@ int16_t *samples;
 uint8_t *audio_outbuf;
 int audio_outbuf_size;
 int audio_input_frame_size;
-
-// TESTING
-int64_t last_video_frame_pts;
-
-// allow variable frame_rate based on device capabilities
-int DEVICE_FRAME_RATE = 25;
-
-// Ensure no simultaneous calls to av_interleaved_write_frame
-int safe_to_encode = 1;
 
 /*
  * add an audio output stream
@@ -456,25 +450,6 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 	// Point the hot file to the buffer file
 	// Point the new buffer at the given new_filename
 	// Must be called after finalizeEncoder();
-	/* FROM OLD CHUNKED VIDEO CODE
-	c = initializeAVCodecContext(c);
-	if(c == NULL){
-		LOGE("error initializing AVCC");
-		exit(1);
-	}
-
-	f1 = f2;
-	native_output_file1 = native_output_file2;
-	LOGI("ShiftEncoders");
-	const jbyte *native_new_filename;
-	native_new_filename = (*env)->GetStringUTFChars(env, new_filename, NULL);
-	native_output_file2 = native_new_filename;
-	f2 = fopen(native_new_filename, "wb");
-	if (!f2) {
-		LOGE("could not open %s", native_new_filename);
-		exit(1);
-	}
-	*/
 
 	while(safe_to_encode != 1) // temp hack
 			continue;
@@ -508,10 +483,6 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVid
 
 	// video
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
-	// audio
-	//jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_frame_data, NULL);
-	//int audio_frame_data_length = (*env)->GetArrayLength(env, audio_frame_data);
-	//LOGI("Incoming audio frame length: %d",audio_frame_data_length);
 
 	// write video_frame_data to AVFrame
 	if(video_st){
@@ -533,20 +504,6 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVid
 			}
 		}
 	}
-	/*
-	// write audio_frame_data to another AVFrame
-	if(audio_st){
-		int audio_sample_count = 0;
-		//LOG("Audio frame size: %d", audio_input_frame_size);
-		for(y=0;y<audio_input_frame_size;y++){
-			samples[y] = (int)(native_audio_frame_data[0]);
-			native_audio_frame_data++;
-			audio_sample_count++;
-		}
-		LOGI("Audio sample count: %d", audio_sample_count);
-	}
-	*/
-	//LOGI("Format frame data");
 
 	/* compute current audio and video time */
 	if (audio_st)
@@ -569,23 +526,9 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVid
 			return;
 	}
 
-	/* write interleaved audio and video frames */
-	// Test - we know we'll have a video and audio frame on each call
+	/* write interleaved video frames */
 	write_video_frame(oc, video_st);
 	//write_audio_frame(oc, audio_st);
-
-	// This logic drops audio and video frames
-	/*
-	if (!video_st || (video_st && audio_st && audio_pts < video_pts)) {
-		write_audio_frame(oc, audio_st);
-		//LOGI("wrote audio frame");
-	} else {
-		write_video_frame(oc, video_st);
-		//LOGI("wrote video frame");
-	}
-	*/
-	//LOGI("Get native frame: is_copy: %d", is_copy);
-	//LOGI("Write video frame!");
 
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
 	//LOGI("ENCODE-VIDEO-1");
@@ -611,6 +554,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeAud
 		}
 		//LOGI("Audio sample count: %d", audio_sample_count);
 
+		/* write interleaved video frames */
 		write_audio_frame(oc, audio_st);
 		//LOGI("Write audio frame!");
 	}
@@ -630,12 +574,6 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeE
 
 	int native_is_final = (int) is_final;
 
-	// BEGIN MUXING CODE
-	/* write the trailer, if any.  the trailer must be written
-	 * before you close the CodecContexts open when you wrote the
-	 * header; otherwise write_trailer may try to use memory that
-	 * was freed on av_codec_close() */
-
 	// if is final finalize
 	if(native_is_final != 0){
 		unlink(native_output_file2); // remove unused buffer file
@@ -647,6 +585,10 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeE
 
 void finalizeAVFormatContext(){
 
+	/* write the trailer, if any.  the trailer must be written
+	 * before you close the CodecContexts open when you wrote the
+	 * header; otherwise write_trailer may try to use memory that
+	 * was freed on av_codec_close() */
 	av_write_trailer(oc);
 
 	// close each codec
@@ -679,7 +621,7 @@ int initializeAVFormatContext(){
 
 	av_register_all();
 
-	LOGI("2. initializingAVFormatContext with file: %s", native_output_file1);
+	//LOGI("2. initializingAVFormatContext with file: %s", native_output_file1);
 
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, ((const char*) native_output_file1));
@@ -694,7 +636,7 @@ int initializeAVFormatContext(){
 	}
 	fmt= oc->oformat;
 
-	LOGI("3. initializeAVFormatContext");
+	//LOGI("3. initializeAVFormatContext");
 
 	/* add the audio and video streams using the default format codecs
 	   and initialize the codecs */
@@ -707,7 +649,7 @@ int initializeAVFormatContext(){
 		audio_st = add_audio_stream(oc, fmt->audio_codec);
 	}
 
-	LOGI("4. set AVFormat codecs");
+	//LOGI("4. set AVFormat codecs");
 
 	av_dump_format(oc, 0, native_output_file1, 1);
 
@@ -732,11 +674,10 @@ int initializeAVFormatContext(){
 
 	/* write the stream header, if any */
 	av_write_header(oc);
-	LOGI("5. write file header");
+	//LOGI("5. write file header");
 
 	LOGI("video frame size: %d, audio frame size: %d", video_st->codec->frame_size, audio_st->codec->frame_size);
 
-	//return audio_input_frame_size; // 49
-	return audio_st->codec->frame_size; // also 49
+	return audio_st->codec->frame_size;
 }
 
