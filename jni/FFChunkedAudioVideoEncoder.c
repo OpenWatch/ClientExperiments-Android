@@ -369,37 +369,6 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
     c = st->codec;
 
-    if (frame_count >= STREAM_NB_FRAMES) {
-        /* no more frame to compress. The codec has a latency of a few
-           frames if using B frames, so we get the last frames by
-           passing the same picture again */
-    } else {
-    	/* DO NOT NEED. WE ALWAYS ROLL W/ YUV420P
-
-        if (c->pix_fmt != PIX_FMT_YUV420P) {
-            // as we only generate a YUV420P picture, we must convert it
-            //   to the codec pixel format if needed
-            if (img_convert_ctx == NULL) {
-                img_convert_ctx = sws_getContext(c->width, c->height,
-                                                 PIX_FMT_YUV420P,
-                                                 c->width, c->height,
-                                                 c->pix_fmt,
-                                                 sws_flags, NULL, NULL, NULL);
-                if (img_convert_ctx == NULL) {
-                    fprintf(stderr, "Cannot initialize the conversion context\n");
-                    exit(1);
-                }
-            }
-            fill_yuv_image(tmp_picture, frame_count, c->width, c->height);
-            sws_scale(img_convert_ctx, tmp_picture->data, tmp_picture->linesize,
-                      0, c->height, picture->data, picture->linesize);
-        } else {
-            fill_yuv_image(picture, frame_count, c->width, c->height);
-        }
-        */
-    }
-
-
     if (oc->oformat->flags & AVFMT_RAWPICTURE) {
         /* raw video case. The API will change slightly in the near
            futur for that */
@@ -595,12 +564,6 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVid
 	else
 		LOGI("video_pts or audio_pts missing");
 
-	/*
-	if ((!audio_st || audio_pts >= STREAM_DURATION) &&
-		(!video_st || video_pts >= STREAM_DURATION))
-		break;
- 	*/
-
 	if (!audio_st && !video_st){
 		LOGE("No audio OR video stream :(");
 			return;
@@ -667,48 +630,19 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_finalizeE
 
 	int native_is_final = (int) is_final;
 
-	/* No longer needed
-	// get the delayed frames
-	for(; out_size || !had_output; i++) {
-		//fflush(stdout);
-
-		out_size = avcodec_encode_video(c, outbuf, outbuf_size, NULL);
-		had_output |= out_size;
-		//printf("write frame %3d (size=%5d)\n", i, out_size);
-		LOGI("write delayed frame %3d (size=%5d)", i, out_size);
-		fwrite(outbuf, 1, out_size, f1);
-	}
-
-	// add sequence end code to have a real mpeg file
-	outbuf[0] = 0x00;
-	outbuf[1] = 0x00;
-	outbuf[2] = 0x01;
-	outbuf[3] = 0xb7;
-	fwrite(outbuf, 1, 4, f1);
-	 */
-	//fclose(f1);
-	//fclose(f2);
-
 	// BEGIN MUXING CODE
 	/* write the trailer, if any.  the trailer must be written
 	 * before you close the CodecContexts open when you wrote the
 	 * header; otherwise write_trailer may try to use memory that
 	 * was freed on av_codec_close() */
 
-
-	    if(native_is_final != 0){ // if is final finalize
-			/* Don't think is needed anymore
-			free(outbuf);
-			avcodec_close(c);
-			av_free(c);
-			av_free(frame->data[0]);
-			av_free(frame);
-			*/
-			unlink(native_output_file2); // remove unused buffer file
-	    }
-	    finalizeAVFormatContext();
-	    safe_to_encode = 1;
-	    return 0;
+	// if is final finalize
+	if(native_is_final != 0){
+		unlink(native_output_file2); // remove unused buffer file
+	}
+	finalizeAVFormatContext();
+	safe_to_encode = 1;
+	return 0;
 }
 
 void finalizeAVFormatContext(){
@@ -740,24 +674,6 @@ void finalizeAVFormatContext(){
 // Method to be called after beginning new chunk
 // to initialize AVFormatContext with new chunk filename
 int initializeAVFormatContext(){
-
-	/*
-	// test file opening
-	FILE *test_file = fopen(native_output_file1, "wb");
-	if (!test_file) {
-		//fprintf(stderr, "could not open %s\n", filename);
-		LOGE("could not open %s", native_output_file1);
-		exit(1);
-	}
-	LOGI("successfully opened file.");
-	fclose(test_file);
-
-
-	// TEST file for avformat_alloc_output
-	const char test_path[] = "/sdcard/ffmpeg_testing/1223.mpeg";
-	native_output_file1 = test_path;
-	// END TEST
-	*/
 
 	frame_count = 0;
 
@@ -824,34 +740,3 @@ int initializeAVFormatContext(){
 	return audio_st->codec->frame_size; // also 49
 }
 
-// From ChunkedVideo demo
-/*
-AVCodecContext* initializeAVCodecContext(AVCodecContext *c){
-
-	AVCodecContext *new_c;
-	new_c = avcodec_alloc_context3(codec);
-	//frame = avcodec_alloc_frame();
-
-	LOGI("alloc AVFrame and AVCodecContext");
-
-	// put sample parameters
-	new_c->bit_rate = 400000;
-	// resolution must be a multiple of two
-	new_c->width = c->width;
-	new_c->height = c->height;
-	// frames per second
-	new_c->time_base= (AVRational){1,25};
-	new_c->gop_size = 10; // emit one intra frame every ten frames
-	new_c->max_b_frames=1;
-	new_c->pix_fmt = PIX_FMT_YUV420P;
-
-	if (avcodec_open2(new_c, codec, NULL) < 0) {
-			//fprintf(stderr, "could not open codec\n");
-			LOGE("could not open codec");
-			exit(1);
-		}
-
-	return new_c;
-
-}
-*/

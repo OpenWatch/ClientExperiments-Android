@@ -25,16 +25,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 
 	public static boolean is_recording = false;
 
-	/*
-	 * private static FFVideoEncoder ffencoder1; private static FFVideoEncoder
-	 * ffencoder2; private static FFVideoEncoder current_encoder;
-	 */
 	private static FFChunkedAudioVideoEncoder ffencoder;
-
-	private int chunk = 1; // count video chunks in this recording
-
-	private int chunk_frame_count = 0;
-	private int chunk_frame_max = 25 * 5; // chunk every this many frames
 
 	private String output_filename_base = "";
 
@@ -42,25 +33,20 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	private final int output_width = 320;
 	private final int output_height = 240;
 	private final int fps = 15;
+	
+	private int chunk = 1; // video chunks in this recording
+
+	private int chunk_frame_count = 0; // frames recorded in current chunk
+	private int chunk_frame_max = fps * 5; // chunk every this many frames
 
 	private AudioSoftwarePoller audio_recorder;
 
 	@SuppressLint("NewApi")
-	public void startRecording(SurfaceView camera_surface_view,
-			String output_filename_base) {
-
-		chunk = 1;
-
+	public void startRecording(Camera camera, SurfaceView camera_surface_view,
+			String output_filename_base) throws Exception {
+		
+		this.camera = camera;
 		this.output_filename_base = output_filename_base;
-
-		ffencoder = new FFChunkedAudioVideoEncoder();
-
-		chunk += 2;
-
-		if (camera == null)
-			camera = Camera.open();
-		else
-			return; // The last video recording was not stopped properly
 
 		Camera.Parameters camera_parameters = camera.getParameters();
 		camera_parameters.setPreviewFormat(ImageFormat.NV21);
@@ -70,7 +56,6 @@ public class ChunkedAudioVideoSoftwareRecorder {
 			camera_parameters = setCameraPreviewFPS(camera_parameters, fps);
 		
 		camera_parameters = setCameraPreviewSize(camera_parameters, output_width, output_height);
-
 		camera.setParameters(camera_parameters);
 
 		try {
@@ -81,8 +66,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		}
 
 		Size previewSize = camera.getParameters().getPreviewSize();
-		int dataBufferSize = (int) (previewSize.height * previewSize.width * (ImageFormat
-				.getBitsPerPixel(camera.getParameters().getPreviewFormat()) / 8.0));
+		//int dataBufferSize = (int) (previewSize.height * previewSize.width * (ImageFormat
+		//		.getBitsPerPixel(camera.getParameters().getPreviewFormat()) / 8.0));
 
 		camera.setPreviewCallback(new Camera.PreviewCallback() {
 
@@ -102,10 +87,16 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		});
 
 		// Ready FFEncoder
+		ffencoder = new FFChunkedAudioVideoEncoder();
+		chunk = 1;
+		
+		// num_samples is the # of audio samples / frame
 		int num_samples = ffencoder.initializeEncoder(output_filename_base
 				+ "_" + String.valueOf(chunk) + file_ext, output_filename_base
 				+ "_" + String.valueOf(chunk + 1) + file_ext, output_width,
 				output_height, fps);
+		
+		chunk += 2;
 
 		// Attach AudioSoftwarePoller to FFEncoder. Calls ffencoder.encodeAudioFrame(...)
 		audio_recorder = new AudioSoftwarePoller(ffencoder);
@@ -173,7 +164,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 
 	}
 	
-	public Camera.Parameters setCameraPreviewSize(Camera.Parameters parameters, int desired_width, int desired_height){
+	public Camera.Parameters setCameraPreviewSize(Camera.Parameters parameters, int desired_width, int desired_height) throws Exception{
 		List<Camera.Size> preview_sizes = parameters.getSupportedPreviewSizes();
 		int desired_preview_size_index = -1;
 		for(int x = 0; x < preview_sizes.size(); x++){
@@ -182,6 +173,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		}
 		if (desired_preview_size_index == -1) {
 			Log.e("setCameraPreviewFPS", "Couldn't find desired preview size: " + String.valueOf(desired_width) + "x" + String.valueOf(desired_height));
+			throw new Exception("Couldnt find desired preview size");
 		}else{
 			parameters.setPreviewSize(desired_width, desired_height);
 		}

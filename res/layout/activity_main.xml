@@ -8,7 +8,13 @@
         android:layout_width="fill_parent"
         android:layout_height="150dp"
         android:gravity="center" />
-    
+
+    <FrameLayout
+        android:id="@+id/camera_preview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_weight="1" />
+
     <Button
         android:id="@+id/test_btn"
         android:layout_width="wrap_content"
@@ -18,7 +24,7 @@
         android:text="Start Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
-    
+
     <!--
     <Button
         android:layout_width="wrap_content"
@@ -53,9 +59,6 @@
         android:text="Start SW Video Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
-        
-        -->
-    
-    
+    -->
 
 </RelativeLayout>
