@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 
 import net.openwatch.openwatch2.audio.AudioSoftwarePoller;
@@ -38,6 +39,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 
 	private int chunk_frame_count = 0; // frames recorded in current chunk
 	private int chunk_frame_max = fps * 5; // chunk every this many frames
+	
+	private Date video_frame_date;
 
 	private AudioSoftwarePoller audio_recorder;
 
@@ -76,7 +79,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				Log.d("FRAME", "video frame polled");
 				// while(!audio_recorder.recorderTask.audio_read_data_ready)
 				// continue; // make sure we aren't writing to audio_read_data
-				ffencoder.encodeVideoFrame(video_frame_data);
+				video_frame_date = new Date();
+				ffencoder.encodeVideoFrame(video_frame_data, video_frame_date.getTime());
 				// audio_recorder.recorderTask.audio_read_data
 				chunk_frame_count++;
 				if (chunk_frame_count >= chunk_frame_max) {

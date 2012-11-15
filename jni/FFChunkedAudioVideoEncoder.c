@@ -44,9 +44,11 @@ int output_height;
 AVCodecContext* initializeAVCodecContext(AVCodecContext *c);
 
 // TESTING
-int64_t last_video_frame_pts;
+//int64_t last_video_frame_pts;
 int DEVICE_FRAME_RATE = 25;  // allow variable frame_rate based on device capabilities
 int safe_to_encode = 1; // Ensure no collisions when writing audio / video from separate threads
+long last_video_frame_timestamp; // last video frame timestamp
+long current_video_frame_timestamp;
 
 /***********************************
  *   AUXILLARY MUXING METHODS      *
@@ -392,10 +394,23 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.data= video_outbuf;
             pkt.size= out_size;
             //LOGI("Prepared to write interleaved frame");
+
+
+            // Determine video pts by ms time difference since last frame + recorded frame count
+            double video_gap = (current_video_frame_timestamp - last_video_frame_timestamp) / ((double) 1000); // ms converted to s
+            double time_base = ((double) st->time_base.num) / (st->time_base.den);
+            // %ld - long,  %d - int, %f double/float
+            //LOGI("VIDEO_TB_NUM: %d DEN: %d",st->time_base.num, st->time_base.den);
+            //LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f", video_gap, time_base);
+            //LOGI("VIDEO_FRAME_GAP_FRAMES: %f rounded: %d", video_gap * time_base, (int)(video_gap * time_base));
+
+            pkt.pts =  (int)(video_gap * time_base) + frame_count;
+            frame_count = pkt.pts;
+
+            LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
+            //last_video_frame_pts = pkt.pts;
+
             /* write the compressed frame in the media file */
-            LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d",pkt.pts, pkt.dts, pkt.duration);
-            // TESTING
-            last_video_frame_pts = pkt.pts;
             ret = av_interleaved_write_frame(oc, &pkt);
             //LOGI("Wrote interleaved frame");
         } else {
@@ -468,7 +483,7 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_shiftEnco
 	safe_to_encode = 1;
 }
 
-void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVideoFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data){
+void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVideoFrame(JNIEnv * env, jobject this, jbyteArray video_frame_data, jlong this_video_frame_timestamp){
 	if(safe_to_encode != 1)
 			LOGI("COLLISION!-V");
 	while(safe_to_encode != 1) // temp hack
@@ -479,10 +494,17 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_encodeVid
 	//LOGI("ENCODE-VIDEO-0");
 	// Convert Java types
 
-	frame_count ++;
-
-	// video
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
+
+	// If this is the first frame, set current and last frame ts
+	// equal to the current frame. Else the new last ts = old current ts
+	if(current_video_frame_timestamp == NULL)
+		last_video_frame_timestamp = (long) this_video_frame_timestamp;
+	else
+		last_video_frame_timestamp = current_video_frame_timestamp;
+
+	current_video_frame_timestamp = (long) this_video_frame_timestamp;
+
 
 	// write video_frame_data to AVFrame
 	if(video_st){
