@@ -48,6 +48,25 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	public void startRecording(Camera camera, SurfaceView camera_surface_view,
 			String output_filename_base) throws Exception {
 		
+		// Ready FFEncoder
+		ffencoder = new FFChunkedAudioVideoEncoder();
+		chunk = 1;
+		
+		// num_samples is the # of audio samples / frame
+		int num_samples = ffencoder.initializeEncoder(output_filename_base
+				+ "_" + String.valueOf(chunk) + file_ext, output_filename_base
+				+ "_" + String.valueOf(chunk + 1) + file_ext, output_width,
+				output_height, fps);
+		
+		chunk += 2;
+
+		// Attach AudioSoftwarePoller to FFEncoder. Calls ffencoder.encodeAudioFrame(...)
+		audio_recorder = new AudioSoftwarePoller(ffencoder);
+		audio_recorder.recorderTask.samples_per_frame = num_samples;
+		Log.i("AUDIO_FRAME_SIZE",
+				"audio frame size: " + String.valueOf(num_samples));
+		audio_recorder.startRecording();
+		
 		this.camera = camera;
 		this.output_filename_base = output_filename_base;
 
@@ -79,8 +98,38 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				Log.d("FRAME", "video frame polled");
 				// while(!audio_recorder.recorderTask.audio_read_data_ready)
 				// continue; // make sure we aren't writing to audio_read_data
+				//audio_recorder.recorderTask.audio_read_data
+				
+				int audio_buffer_in = audio_recorder.recorderTask.current_buffer_index;
+				int audio_read_end_index = audio_buffer_in - 1;
+				int audio_read_start_index = audio_recorder.recorderTask.buffer_read_index;
+				int buffer_size = audio_recorder.recorderTask.buffer_size;
+				int distance = audio_recorder.recorderTask.buffer_size;
+				int num_frames = distance / audio_recorder.recorderTask.samples_per_frame;
+				int real_dist = num_frames * audio_recorder.recorderTask.samples_per_frame;
+				short[] audio_samples = new short[real_dist];
+				for(int count=0;count<real_dist;count++){
+					audio_samples[count] = audio_recorder.recorderTask.audio_read_data[(audio_read_start_index + count)% buffer_size ];
+				}
+				audio_recorder.recorderTask.buffer_read_index = (audio_recorder.recorderTask.buffer_read_index + real_dist ) % buffer_size;
+				/*
+				boolean done = false;
+				int buffer_size = audio_recorder.recorderTask.buffer_size;
+				short[] audio_samples = new short[buffer_size];
+				int index = 0;
+				int buffer_index = 0;
+				while(!done){
+					buffer_index = (audio_read_start_index + index) % buffer_size;
+					if(buffer_index >= buffer_size && audio_recorder.recorderTask.first_pass_complete)
+						
+					audio_samples[index] = audio_recorder.recorderTask.audio_read_data[buffer_index];
+					index++;
+				}*/
+				// send audio data to encoder
+				audio_recorder.recorderTask.buffer_read_index = audio_read_end_index;
 				video_frame_date = new Date();
-				ffencoder.encodeVideoFrame(video_frame_data, video_frame_date.getTime());
+				ffencoder.processAVData(video_frame_data,  video_frame_date.getTime(), audio_samples, real_dist);
+				//ffencoder.encodeVideoFrame(video_frame_data, video_frame_date.getTime(), audio_samples, real_dist);
 				// audio_recorder.recorderTask.audio_read_data
 				chunk_frame_count++;
 				if (chunk_frame_count >= chunk_frame_max) {
@@ -89,25 +138,6 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				}
 			}
 		});
-
-		// Ready FFEncoder
-		ffencoder = new FFChunkedAudioVideoEncoder();
-		chunk = 1;
-		
-		// num_samples is the # of audio samples / frame
-		int num_samples = ffencoder.initializeEncoder(output_filename_base
-				+ "_" + String.valueOf(chunk) + file_ext, output_filename_base
-				+ "_" + String.valueOf(chunk + 1) + file_ext, output_width,
-				output_height, fps);
-		
-		chunk += 2;
-
-		// Attach AudioSoftwarePoller to FFEncoder. Calls ffencoder.encodeAudioFrame(...)
-		audio_recorder = new AudioSoftwarePoller(ffencoder);
-		audio_recorder.recorderTask.samples_per_frame = num_samples;
-		Log.i("AUDIO_FRAME_SIZE",
-				"audio frame size: " + String.valueOf(num_samples));
-		audio_recorder.startRecording();
 
 		camera.startPreview();
 		is_recording = true;
