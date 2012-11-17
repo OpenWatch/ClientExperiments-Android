@@ -401,7 +401,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             double time_base = ((double) st->time_base.num) / (st->time_base.den);
             // %ld - long,  %d - int, %f double/float
             //LOGI("VIDEO_TB_NUM: %d DEN: %d",st->time_base.num, st->time_base.den);
-            //LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f", video_gap, time_base);
+            LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f", video_gap, time_base);
             //LOGI("VIDEO_FRAME_GAP_FRAMES: %f rounded: %d", video_gap * time_base, (int)(video_gap * time_base));
 
             pkt.pts =  (int)(video_gap * time_base) + frame_count;
@@ -421,7 +421,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
-    //frame_count++;
+    frame_count++;
     // stream of indeterminate length
 }
 
@@ -558,7 +558,7 @@ void encodeVideoFrame(jbyteArray *native_video_frame_data, jlong this_video_fram
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_processAVData(JNIEnv * env, jobject this, jbyteArray video_frame_data, jlong this_video_frame_timestamp, jshortArray audio_data, jint audio_length){
 	LOGI("processAVData");
 
-	// AUDIO
+	// VIDEO
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
 	//encodeVideoFrame(native_video_frame_data, this_video_frame_timestamp);
 	if(safe_to_encode != 1)
@@ -634,9 +634,11 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_processAV
 
 	LOGI("encodeVideoFrame complete");
 
-	// VIDEO
-
+	// AUDIO
+	if(audio_data == NULL)
+		return; // no audio data present
 	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_data, NULL);
+
 	//encodeAudioFrames(native_audio_frame_data, audio_length);
 	if(safe_to_encode != 1)
 			LOGI("COLLISION!-A");
