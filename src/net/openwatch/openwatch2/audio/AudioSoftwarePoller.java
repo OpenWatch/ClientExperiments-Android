@@ -125,6 +125,7 @@ public class AudioSoftwarePoller {
 	        {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
+				Log.i("AUDIO_DATA","polling " + String.valueOf(current_buffer_index) + " / " + String.valueOf(current_buffer_index + samples_per_frame));
 	            audio_recorder.read(audio_read_data_buffer, current_buffer_index, samples_per_frame);
 	            current_buffer_index = (current_buffer_index + samples_per_frame) % buffer_size;
 	      

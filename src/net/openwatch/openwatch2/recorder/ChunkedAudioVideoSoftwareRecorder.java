@@ -100,17 +100,33 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				// continue; // make sure we aren't writing to audio_read_data
 				//audio_recorder.recorderTask.audio_read_data
 				
-				int audio_buffer_in = audio_recorder.recorderTask.current_buffer_index;
-				int audio_read_end_index = audio_buffer_in - 1;
+				int audio_buffer_in_index = audio_recorder.recorderTask.current_buffer_index;
+				int audio_read_end_index = audio_buffer_in_index - 1;
 				int audio_read_start_index = audio_recorder.recorderTask.buffer_read_index;
 				int buffer_size = audio_recorder.recorderTask.buffer_size;
-				int distance = audio_recorder.recorderTask.buffer_size;
+				int distance;
+				
+				if(audio_buffer_in_index < audio_read_start_index)
+					distance = buffer_size - Math.abs((audio_read_end_index - audio_read_start_index));
+				else
+					distance = audio_read_end_index - audio_read_start_index;
+				
 				int num_frames = distance / audio_recorder.recorderTask.samples_per_frame;
 				int real_dist = num_frames * audio_recorder.recorderTask.samples_per_frame;
 				short[] audio_samples = new short[real_dist];
+				
+				// the one case where -1 doesn't cut it :)
+				if(audio_read_end_index == -1)
+					audio_read_end_index = buffer_size - 1;
+					
+				if(audio_read_end_index < 0){
+					Log.d(TAG,"break it");
+				}
+				
 				for(int count=0;count<real_dist;count++){
 					audio_samples[count] = audio_recorder.recorderTask.audio_read_data[(audio_read_start_index + count)% buffer_size ];
 				}
+				Log.i("AUDIO_DATA", "frames: " + String.valueOf(num_frames) + " length: " + String.valueOf(audio_samples.length) + " audio_read_start: "+ String.valueOf(audio_read_start_index) + " audio_end: " + String.valueOf(audio_read_end_index));
 				audio_recorder.recorderTask.buffer_read_index = (audio_recorder.recorderTask.buffer_read_index + real_dist ) % buffer_size;
 				/*
 				boolean done = false;

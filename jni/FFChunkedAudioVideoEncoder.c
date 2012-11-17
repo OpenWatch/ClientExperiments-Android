@@ -491,8 +491,7 @@ void encodeVideoFrame(jbyteArray *native_video_frame_data, jlong this_video_fram
 
 	safe_to_encode = 0;
 
-	//LOGI("ENCODE-VIDEO-0");
-	// Convert Java types
+	LOGI("ENCODE-VIDEO-0");
 
 	// If this is the first frame, set current and last frame ts
 	// equal to the current frame. Else the new last ts = old current ts
@@ -546,24 +545,137 @@ void encodeVideoFrame(jbyteArray *native_video_frame_data, jlong this_video_fram
 			return;
 	}
 
+	LOGI("pre write video frame");
 	/* write interleaved video frames */
 	write_video_frame(oc, video_st);
 	//write_audio_frame(oc, audio_st);
 
 
-	//LOGI("ENCODE-VIDEO-1");
+	LOGI("ENCODE-VIDEO-1");
 	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_processAVData(JNIEnv * env, jobject this, jbyteArray video_frame_data, jlong this_video_frame_timestamp, jshortArray audio_data, jint audio_length){
+	LOGI("processAVData");
 
+	// AUDIO
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
-	encodeVideoFrame(native_video_frame_data, this_video_frame_timestamp);
+	//encodeVideoFrame(native_video_frame_data, this_video_frame_timestamp);
+	if(safe_to_encode != 1)
+				LOGI("COLLISION!-V");
+		while(safe_to_encode != 1) // temp hack
+			continue;
+
+		safe_to_encode = 0;
+
+		LOGI("ENCODE-VIDEO-0");
+
+		// If this is the first frame, set current and last frame ts
+		// equal to the current frame. Else the new last ts = old current ts
+		if(current_video_frame_timestamp == NULL)
+			last_video_frame_timestamp = (long) this_video_frame_timestamp;
+		else
+			last_video_frame_timestamp = current_video_frame_timestamp;
+
+		current_video_frame_timestamp = (long) this_video_frame_timestamp;
+
+
+		// write video_frame_data to AVFrame
+		if(video_st){
+			c = video_st->codec; // don't need to do this each frame?
+
+			for(y=0;y<c->height;y++) {
+				for(x=0;x<c->width;x++) {
+					picture->data[0][y * picture->linesize[0] + x] = native_video_frame_data[0];
+					native_video_frame_data++;
+				}
+			}
+
+			/* Cb and Cr */
+			for(y=0;y<c->height/2;y++) {
+				for(x=0;x<c->width/2;x++) {
+					picture->data[2][y * picture->linesize[2] + x] = native_video_frame_data[0];
+					picture->data[1][y * picture->linesize[1] + x] = native_video_frame_data[1];
+					native_video_frame_data+=2;
+				}
+			}
+		}
+
+		/* compute current audio and video time */
+		if (audio_st)
+			audio_pts = (double)audio_st->pts.val * audio_st->time_base.num / audio_st->time_base.den;
+		else
+			audio_pts = 0.0;
+
+		if (video_st)
+			video_pts = (double)video_st->pts.val * video_st->time_base.num / video_st->time_base.den;
+		else
+			video_pts = 0.0;
+
+		if(video_pts && audio_pts)
+			LOGI("video_pts: %" PRId64 " audio_pts: %" PRId64,video_pts,audio_pts); // stream.pts -> AVFrac ->val -> int64_t
+		else
+			LOGI("video_pts or audio_pts missing");
+
+		if (!audio_st && !video_st){
+			LOGE("No audio OR video stream :(");
+				return;
+		}
+
+		LOGI("pre write video frame");
+		/* write interleaved video frames */
+		write_video_frame(oc, video_st);
+		//write_audio_frame(oc, audio_st);
+
+
+		LOGI("ENCODE-VIDEO-1");
+		safe_to_encode = 1;
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
 
+	LOGI("encodeVideoFrame complete");
+
+	// VIDEO
+
 	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_data, NULL);
-	encodeAudioFrames(native_audio_frame_data, audio_length);
+	//encodeAudioFrames(native_audio_frame_data, audio_length);
+	if(safe_to_encode != 1)
+			LOGI("COLLISION!-A");
+		while(safe_to_encode != 1) // temp hack
+				continue;
+		safe_to_encode = 0;
+		//LOGI("ENCODE-AUDIO-0");
+
+		if((int)audio_length % audio_input_frame_size != 0){
+			LOGE("Audio length: %d, audio_input_frame_size %d", (int)audio_length, audio_input_frame_size);
+			exit(1);
+		}
+
+		int num_frames = (int) audio_length / audio_input_frame_size;
+
+		if(audio_st){
+			int x = 0;
+			for(x=0;x<num_frames;x++){ // for each audio frame
+				int audio_sample_count = 0;
+				//LOG("Audio frame size: %d", audio_input_frame_size);
+				for(y=0;y<audio_input_frame_size;y++){ // copy each sample
+					samples[y] = (int)(native_audio_frame_data[0]);
+					native_audio_frame_data++;
+					audio_sample_count++;
+				}
+				write_audio_frame(oc, audio_st);
+			}
+			//LOGI("Audio sample count: %d", audio_sample_count);
+
+			/* write interleaved video frames */
+
+			//LOGI("Write audio frame!");
+		}
+
+		//LOGI("ENCODE-AUDIO-1");
+		safe_to_encode = 1;
 	(*env)->ReleaseShortArrayElements(env, audio_data, native_audio_frame_data, 0);
+
+	LOGI("encodeAudioFrame complete");
 
 }
 
