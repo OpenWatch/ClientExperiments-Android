@@ -56,6 +56,9 @@ public class AudioSoftwarePoller {
 		public short[] audio_read_data_buffer;
 		public short[] audio_read_data;
 		
+		public int total_frames_written = 0;
+		public int total_frames_read = 0;
+		
 		//public boolean audio_read_data_ready = false; // is audio_read_data safe for reading
 		
 		public boolean first_pass_complete = false;
@@ -125,10 +128,10 @@ public class AudioSoftwarePoller {
 	        {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
-				Log.i("AUDIO_DATA","polling " + String.valueOf(current_buffer_index) + " / " + String.valueOf(current_buffer_index + samples_per_frame));
 	            audio_recorder.read(audio_read_data_buffer, current_buffer_index, samples_per_frame);
+	            Log.i("AUDIO_FILL_BUFFER",String.valueOf(current_buffer_index) + " - " + String.valueOf(current_buffer_index + samples_per_frame-1));
 	            current_buffer_index = (current_buffer_index + samples_per_frame) % buffer_size;
-	      
+	            total_frames_written ++;
 	            //ffencoder.encodeAudioFrame(audio_read_data_buffer);
 	            //audio_read_data_ready = false;
 	            //System.arraycopy( audio_read_data_buffer, 0, audio_read_data, 0, audio_read_data_buffer.length );

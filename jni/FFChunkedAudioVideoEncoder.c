@@ -72,6 +72,7 @@ int16_t *samples;
 uint8_t *audio_outbuf;
 int audio_outbuf_size;
 int audio_input_frame_size;
+int audio_frame_count;
 
 /*
  * add an audio output stream
@@ -190,6 +191,9 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
     pkt.flags |= AV_PKT_FLAG_KEY;
     pkt.stream_index= st->index;
     pkt.data= audio_outbuf;
+    //pkt.pts = audio_frame_count;
+    //pkt.dts = audio_frame_count;
+    audio_frame_count ++;
 
     /* write the compressed frame in the media file */
     // TESTING: force Audio frame PTS to Video frame PTS
@@ -214,7 +218,7 @@ static void close_audio(AVFormatContext *oc, AVStream *st)
 
 AVFrame *picture, *tmp_picture;
 uint8_t *video_outbuf;
-int frame_count, video_outbuf_size;
+int video_frame_count, video_outbuf_size;
 
 /* add a video output stream */
 static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
@@ -404,8 +408,8 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f", video_gap, time_base);
             //LOGI("VIDEO_FRAME_GAP_FRAMES: %f rounded: %d", video_gap * time_base, (int)(video_gap * time_base));
 
-            pkt.pts =  (int)(video_gap * time_base) + frame_count;
-            frame_count = pkt.pts;
+            pkt.pts =  (int)(video_gap * time_base) + video_frame_count;
+            video_frame_count = pkt.pts;
 
             LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             //last_video_frame_pts = pkt.pts;
@@ -421,7 +425,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
-    frame_count++;
+    video_frame_count++;
     // stream of indeterminate length
 }
 
@@ -769,7 +773,8 @@ void finalizeAVFormatContext(){
 // to initialize AVFormatContext with new chunk filename
 int initializeAVFormatContext(){
 
-	frame_count = 0;
+	video_frame_count = 0;
+	audio_frame_count = 0;
 
 	av_register_all();
 
