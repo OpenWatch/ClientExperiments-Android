@@ -16,6 +16,7 @@ import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.os.Build;
+import android.os.Debug;
 import android.util.Log;
 import android.view.SurfaceView;
 
@@ -41,6 +42,10 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	private int chunk_frame_count = 0; // frames recorded in current chunk
 	private int chunk_frame_max = fps * 5; // chunk every this many frames
 	
+	private long start_time;
+	private long end_time;
+	int frame_count = 0;
+	
 	private Date video_frame_date;
 
 	private AudioSoftwarePoller audio_recorder;
@@ -48,6 +53,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	@SuppressLint("NewApi")
 	public void startRecording(Camera camera, SurfaceView camera_surface_view,
 			String output_filename_base) throws Exception {
+		
+		//Debug.startMethodTracing("AV_Profiling");
 		
 		// Ready FFEncoder
 		ffencoder = new FFChunkedAudioVideoEncoder();
@@ -98,15 +105,19 @@ public class ChunkedAudioVideoSoftwareRecorder {
 			@Override
 			public void onPreviewFrame(byte[] video_frame_data, Camera camera) {
 				Log.d("FRAME", "video frame polled");
+				frame_count++;
 				// while(!audio_recorder.recorderTask.audio_read_data_ready)
 				// continue; // make sure we aren't writing to audio_read_data
 				//audio_recorder.recorderTask.audio_read_data
 				short[] audio_samples = null;
 				int real_dist = 0;
 				
+				// TESTING maximum possible cameraPreview rate
+				
 				// If we've received the first V frame and the audio buffer has something in it
-				if(got_first_video_frame && audio_recorder.recorderTask.current_buffer_index != 0){
-					int audio_buffer_in_index = audio_recorder.recorderTask.current_buffer_index;
+				if(got_first_video_frame && audio_recorder.recorderTask.buffer_write_index != 0){
+					/*
+					int audio_buffer_in_index = audio_recorder.recorderTask.buffer_write_index;
 					int audio_read_end_index = audio_buffer_in_index; // previously -1
 					int audio_read_start_index = audio_recorder.recorderTask.buffer_read_index;
 					int buffer_size = audio_recorder.recorderTask.buffer_size;
@@ -127,25 +138,27 @@ public class ChunkedAudioVideoSoftwareRecorder {
 					
 					//int last_read_index = 0;
 					for(int count=0;count<real_dist;count++){
-						audio_samples[count] = audio_recorder.recorderTask.audio_read_data_buffer[(audio_read_start_index + count)% buffer_size ];
+						audio_samples[count] = audio_recorder.recorderTask.data_buffer[(audio_read_start_index + count)% buffer_size ];
 						//last_read_index = (audio_read_start_index + count)% buffer_size;
 					}
+					*/
 					//Log.i("AUDIO_READ_BUFFER", "buffer_size: " + String.valueOf(buffer_size) + " frames: " + String.valueOf(num_frames) + " length: " + String.valueOf(audio_samples.length) + " audio_read_start: "+ String.valueOf(audio_read_start_index) + " audio_end: " + String.valueOf((audio_read_start_index + real_dist-1)% buffer_size));
-					Log.i("AUDIO_READ_BUFFER",String.valueOf(audio_read_start_index) + " - " + String.valueOf((audio_read_start_index + real_dist-1) % buffer_size));
-					audio_recorder.recorderTask.buffer_read_index = (audio_recorder.recorderTask.buffer_read_index + real_dist ) % buffer_size;
+					//Log.i("AUDIO_READ_BUFFER",String.valueOf(audio_read_start_index) + " - " + String.valueOf((audio_read_start_index + real_dist-1) % buffer_size));
+					//audio_recorder.recorderTask.buffer_read_index = (audio_recorder.recorderTask.buffer_read_index + real_dist ) % buffer_size;
 
-					audio_recorder.recorderTask.buffer_read_index = audio_read_end_index;
+					//audio_recorder.recorderTask.buffer_read_index = audio_read_end_index;
 					
 					// TESTING
-					audio_recorder.recorderTask.total_frames_read += num_frames;
+					//audio_recorder.recorderTask.total_frames_read += num_frames;
 					//Log.i("AUDIO_STATS","Written: " + String.valueOf(audio_recorder.recorderTask.total_frames_written) + " Read: " + String.valueOf(audio_recorder.recorderTask.total_frames_read));
 				}
 				video_frame_date = new Date();
-				ffencoder.processAVData(video_frame_data,  video_frame_date.getTime(), audio_samples, real_dist);
+				ffencoder.processAVData(video_frame_data,  video_frame_date.getTime(), audio_recorder.readAudioFrames(), audio_recorder.read_distance);
 				
 				if(!got_first_video_frame){
 					got_first_video_frame = true;
 					audio_recorder.startRecording(); // start polling audio immediatley after video frame written
+					start_time = new Date().getTime();
 				}
 				//ffencoder.encodeVideoFrame(video_frame_data, video_frame_date.getTime(), audio_samples, real_dist);
 				// audio_recorder.recorderTask.audio_read_data
@@ -179,6 +192,12 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		camera = null;
 		is_recording = false;
 		Log.i("AUDIO_STATS","Written: " + String.valueOf(audio_recorder.recorderTask.total_frames_written) + " Read: " + String.valueOf(audio_recorder.recorderTask.total_frames_read));
+		end_time = new Date().getTime();
+		double elapsed_time = (double) (end_time - start_time) / 1000;
+		int expected_num_frames = (int) (elapsed_time * fps);
+		double frame_success = 100* ((double) frame_count) / expected_num_frames;
+		Log.i("MORE_STATS", "Time: " + String.valueOf(elapsed_time) + " V-Frames: " + String.valueOf(frame_count) + "/" + String.valueOf(expected_num_frames) + " (" + String.valueOf(frame_success)+"%)");
+		//Debug.stopMethodTracing();
 	}
 
 	public static String getFilePath(String output_filename) {

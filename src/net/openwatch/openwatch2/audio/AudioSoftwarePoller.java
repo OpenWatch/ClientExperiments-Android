@@ -22,6 +22,14 @@ public class AudioSoftwarePoller {
 	
 	private FFChunkedAudioVideoEncoder ffencoder;
 	
+	// reused readAudioFrames() variables
+	int read_index;
+	int write_index;
+	int distance; // difference between write / read indexes
+	public int read_distance; // the greatest multiple of samples_per_frame < distance
+	int tail_distance; // if the buffer_write_index < buffer_read_index, how many items shall
+					   // we copy from the buffer tail before resuming from the buffer head
+	
 	public AudioSoftwarePoller(FFChunkedAudioVideoEncoder ffencoder){
 		this.ffencoder = ffencoder;
 	}
@@ -37,6 +45,45 @@ public class AudioSoftwarePoller {
 		// will stop recording after next sample received
 	}
 	
+	/*
+	 * Reads from the circular buffer.
+	 * The short[] returned has length equal to 
+	 * a multiple of samples_per_frame.
+	 */
+	public short[] readAudioFrames(){
+		short[] audio_samples = null;
+		
+		read_index = recorderTask.buffer_read_index;
+		write_index = recorderTask.buffer_write_index;
+		
+		if(write_index == 0)
+			return audio_samples; // if samples aren't ready, there's nothing to do
+		
+		// Compute distance between read & write indexes in circular buffer
+		if(write_index < read_index)
+			distance = recorderTask.buffer_size - Math.abs((write_index - read_index));
+		else
+			distance = write_index - read_index;
+		
+		read_distance = (distance / recorderTask.samples_per_frame) * recorderTask.samples_per_frame;
+		
+		audio_samples = new short[read_distance];
+		
+		if(write_index < read_index){
+			tail_distance = recorderTask.buffer_size - read_index;
+			// copy from buffer_read_index to end of buffer
+			System.arraycopy(recorderTask.data_buffer, read_index, audio_samples, 0, tail_distance);
+			// copy from start of buffer to buffer_write_index
+			System.arraycopy(recorderTask.data_buffer, 0, audio_samples, tail_distance-1, read_distance - tail_distance);
+		}else
+			System.arraycopy(recorderTask.data_buffer, read_index, audio_samples, 0, read_distance);
+		
+		recorderTask.buffer_read_index = write_index;
+		return audio_samples;
+	}
+	
+	
+	
 	// Thread to run audio sampling in
 	public class RecorderTask extends AsyncTask {
 		
@@ -50,11 +97,10 @@ public class AudioSoftwarePoller {
 		public int samples_per_frame; // set before RecorderTask.execute();
 		public final int FRAMES_PER_BUFFER = 43; // 1 sec @ 1024 samples/frame (aac)
 		
-		public int current_buffer_index = 0; // buffer write-in point
+		public int buffer_write_index = 0; // buffer write-in point
 		public int buffer_read_index = 0; // buffer read-in point
 		
-		public short[] audio_read_data_buffer;
-		public short[] audio_read_data;
+		public short[] data_buffer;
 		
 		public int total_frames_written = 0;
 		public int total_frames_read = 0;
@@ -79,8 +125,7 @@ public class AudioSoftwarePoller {
 			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples");
 			Log.i(TAG,"audio frame size: " + String.valueOf(samples_per_frame));
 			notification_period = samples_per_frame;
-			audio_read_data_buffer = new short[buffer_size]; // filled directly by hardware
-			audio_read_data = new short[buffer_size]; // copied after complete frame read
+			data_buffer = new short[buffer_size]; // filled directly by hardware
 			
 			AudioRecord audio_recorder;			
 			audio_recorder = new AudioRecord(
@@ -128,9 +173,9 @@ public class AudioSoftwarePoller {
 	        {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
-	            audio_recorder.read(audio_read_data_buffer, current_buffer_index, samples_per_frame);
-	            Log.i("AUDIO_FILL_BUFFER",String.valueOf(current_buffer_index) + " - " + String.valueOf(current_buffer_index + samples_per_frame-1));
-	            current_buffer_index = (current_buffer_index + samples_per_frame) % buffer_size;
+	            audio_recorder.read(data_buffer, buffer_write_index, samples_per_frame);
+	            Log.i("AUDIO_FILL_BUFFER",String.valueOf(buffer_write_index) + " - " + String.valueOf(buffer_write_index + samples_per_frame-1));
+	            buffer_write_index = (buffer_write_index + samples_per_frame) % buffer_size;
 	            total_frames_written ++;
 	            //ffencoder.encodeAudioFrame(audio_read_data_buffer);
 	            //audio_read_data_ready = false;

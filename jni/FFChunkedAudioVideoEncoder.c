@@ -408,7 +408,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f", video_gap, time_base);
             //LOGI("VIDEO_FRAME_GAP_FRAMES: %f rounded: %d", video_gap * time_base, (int)(video_gap * time_base));
 
-            pkt.pts =  (int)(video_gap * time_base) + video_frame_count;
+            pkt.pts =  (int)(video_gap / time_base) + video_frame_count;
             video_frame_count = pkt.pts;
 
             LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
