@@ -47,8 +47,10 @@ AVCodecContext* initializeAVCodecContext(AVCodecContext *c);
 //int64_t last_video_frame_pts;
 int DEVICE_FRAME_RATE = 25;  // allow variable frame_rate based on device capabilities
 int safe_to_encode = 1; // Ensure no collisions when writing audio / video from separate threads
-long last_video_frame_timestamp; // last video frame timestamp
+long first_video_frame_timestamp;
+long last_video_frame_timestamp;
 long current_video_frame_timestamp;
+int last_pts;
 
 /***********************************
  *   AUXILLARY MUXING METHODS      *
@@ -399,30 +401,40 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.size= out_size;
             //LOGI("Prepared to write interleaved frame");
 
+            LOGI("first_video_frame_time: %ld",first_video_frame_timestamp);
 
             // Determine video pts by ms time difference since last frame + recorded frame count
-            double video_gap = (current_video_frame_timestamp - last_video_frame_timestamp) / ((double) 1000); // ms converted to s
+            //double video_gap = (current_video_frame_timestamp - last_video_frame_timestamp) / ((double) 1000); // ms converted to s
+            double video_gap = (current_video_frame_timestamp - first_video_frame_timestamp) / ((double) 1000); // seconds
             double time_base = ((double) st->time_base.num) / (st->time_base.den);
             // %ld - long,  %d - int, %f double/float
             //LOGI("VIDEO_TB_NUM: %d DEN: %d",st->time_base.num, st->time_base.den);
-            LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f", video_gap, time_base);
+            LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f PTS %"  PRId64, video_gap, time_base, (int)(video_gap / time_base));
             //LOGI("VIDEO_FRAME_GAP_FRAMES: %f rounded: %d", video_gap * time_base, (int)(video_gap * time_base));
 
-            pkt.pts =  (int)(video_gap / time_base) + video_frame_count;
-            video_frame_count = pkt.pts;
+            //pkt.pts =  (int)(video_gap / time_base) + video_frame_count;
+
+            int proposed_pts = (int)(video_gap / time_base);
+            if(last_pts != -1 && proposed_pts == last_pts){
+            	proposed_pts ++;
+            }
+            pkt.pts = proposed_pts;
+            last_pts = proposed_pts;
+            //video_frame_count++;
 
             LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             //last_video_frame_pts = pkt.pts;
 
             /* write the compressed frame in the media file */
             ret = av_interleaved_write_frame(oc, &pkt);
-            //LOGI("Wrote interleaved frame");
+            LOGI("Wrote interleaved frame");
         } else {
             ret = 0;
         }
     }
     if (ret != 0) {
-        fprintf(stderr, "Error while writing video frame\n");
+        LOGE("Error writing video frame");
+    	//fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
     video_frame_count++;
@@ -499,10 +511,12 @@ void encodeVideoFrame(jbyteArray *native_video_frame_data, jlong this_video_fram
 
 	// If this is the first frame, set current and last frame ts
 	// equal to the current frame. Else the new last ts = old current ts
-	if(current_video_frame_timestamp == NULL)
+	if(video_frame_count == 0){
 		last_video_frame_timestamp = (long) this_video_frame_timestamp;
-	else
+		first_video_frame_timestamp = last_video_frame_timestamp;
+	}else{
 		last_video_frame_timestamp = current_video_frame_timestamp;
+	}
 
 	current_video_frame_timestamp = (long) this_video_frame_timestamp;
 
@@ -576,10 +590,12 @@ void Java_net_openwatch_openwatch2_recorder_FFChunkedAudioVideoEncoder_processAV
 
 		// If this is the first frame, set current and last frame ts
 		// equal to the current frame. Else the new last ts = old current ts
-		if(current_video_frame_timestamp == NULL)
-			last_video_frame_timestamp = (long) this_video_frame_timestamp;
-		else
-			last_video_frame_timestamp = current_video_frame_timestamp;
+		if(video_frame_count == 0){
+				last_video_frame_timestamp = (long) this_video_frame_timestamp;
+				first_video_frame_timestamp = last_video_frame_timestamp;
+			}else{
+				last_video_frame_timestamp = current_video_frame_timestamp;
+			}
 
 		current_video_frame_timestamp = (long) this_video_frame_timestamp;
 
@@ -774,6 +790,7 @@ void finalizeAVFormatContext(){
 int initializeAVFormatContext(){
 
 	video_frame_count = 0;
+	last_pts = -1;
 	audio_frame_count = 0;
 
 	av_register_all();
