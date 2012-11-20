@@ -42,7 +42,7 @@ void Java_net_openwatch_openwatch2_video_FFDualVideoEncoder_initializeEncoder(JN
 	int native_height_lq = native_height_hq / 2;
 	int native_width_lq = native_width_hq / 2;
 
-	avcodec_init();
+	//avcodec_init();
 	avcodec_register_all();
 
 	//int codec_id = CODEC_ID_MPEG1VIDEO;

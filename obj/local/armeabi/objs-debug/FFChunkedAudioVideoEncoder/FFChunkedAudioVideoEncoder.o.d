@@ -57,8 +57,11 @@
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/avutil.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/cpu.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/dict.h \
- /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavcodec/version.h \
+ /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/log.h \
+ /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/pixfmt.h \
+ /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/rational.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/audioconvert.h \
+ /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavcodec/version.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/mathematics.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/avformat.h \
  /Applications/android-ndk-r8b/platforms/android-14/arch-arm/usr/include/time.h \
@@ -68,7 +71,6 @@
  /Applications/android-ndk-r8b/platforms/android-14/arch-arm/usr/include/asm-generic/siginfo.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/avio.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/common.h \
- /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/log.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/version.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libswscale/swscale.h
 
@@ -186,9 +188,15 @@
 
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/dict.h:
 
-/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavcodec/version.h:
+/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/log.h:
+
+/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/pixfmt.h:
+
+/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/rational.h:
 
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/audioconvert.h:
+
+/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavcodec/version.h:
 
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/mathematics.h:
 
@@ -207,8 +215,6 @@
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/avio.h:
 
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/common.h:
-
-/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/log.h:
 
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/version.h:
 

@@ -847,7 +847,8 @@ int initializeAVFormatContext(){
 
 
 	/* write the stream header, if any */
-	av_write_header(oc);
+	//av_write_header(oc);
+	avformat_write_header(oc,NULL);
 	//LOGI("5. write file header");
 
 	LOGI("video frame size: %d, audio frame size: %d", video_st->codec->frame_size, audio_st->codec->frame_size);
