@@ -19,9 +19,7 @@ public class AudioSoftwarePoller {
 	public static boolean is_recording = false;
 	
 	public RecorderTask recorderTask = new RecorderTask();
-	
-	private FFChunkedAudioVideoEncoder ffencoder;
-	
+		
 	// reused readAudioFrames() variables
 	int read_index;
 	int write_index;
@@ -30,8 +28,7 @@ public class AudioSoftwarePoller {
 	int tail_distance; // if the buffer_write_index < buffer_read_index, how many items shall
 					   // we copy from the buffer tail before resuming from the buffer head
 	
-	public AudioSoftwarePoller(FFChunkedAudioVideoEncoder ffencoder){
-		this.ffencoder = ffencoder;
+	public AudioSoftwarePoller(){
 	}
 	
 	public void startRecording() {

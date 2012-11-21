@@ -57,7 +57,7 @@ include $(CLEAR_VARS)
 
 LOCAL_LDLIBS += -llog -lz
 LOCAL_STATIC_LIBRARIES := libavformat libavcodec libpostproc libswscale libavutil libx264
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg 
 LOCAL_SRC_FILES := FFVideoEncoder.c
 LOCAL_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 LOCAL_MODULE := FFVideoEncoder
@@ -105,6 +105,17 @@ LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
 LOCAL_SRC_FILES := FFChunkedAudioVideoEncoder.c
 LOCAL_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=neon
 LOCAL_MODULE := FFChunkedAudioVideoEncoder
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+
+LOCAL_LDLIBS += -llog -lz
+LOCAL_STATIC_LIBRARIES := libavformat libavcodec libpostproc libswscale libavutil libx264
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ffmpeg
+LOCAL_SRC_FILES := FFNewChunkedAudioVideoEncoder.c
+LOCAL_CFLAGS := -march=armv7-a -mfloat-abi=softfp -mfpu=neon
+LOCAL_MODULE := FFNewChunkedAudioVideoEncoder
 
 include $(BUILD_SHARED_LIBRARY)
 

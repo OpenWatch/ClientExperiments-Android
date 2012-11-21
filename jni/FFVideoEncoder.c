@@ -184,77 +184,72 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_testFFMPEG(JNIEnv * env,
 
 	avcodec_register_all();
 
-	//printf("Encode video file %s\n", filename);
-
-	LOGI("1. method called!");
-
-	int codec_id = CODEC_ID_MPEG1VIDEO;
-
-	LOGI("2. codec set");
-
+	//printf("Encode video file %s\n", native_filename);
+	LOGI("Test method called");
+	int codec_id = CODEC_ID_H264;
+	//int codec_id =  CODEC_ID_MPEG4;
+	//int codec_id = CODEC_ID_MPEG1VIDEO;
+	/* find the mpeg1 video encoder */
 	codec = avcodec_find_encoder(codec_id);
-	LOGI("2a. avcodec_alloc_context3(codec)");
 	if (!codec) {
-		LOGI("2b. codec not found");
+		LOGE("codec not found");
 		//fprintf(stderr, "codec not found\n");
 		exit(1);
 	}
 
 	c = avcodec_alloc_context3(codec);
-	LOGI("3. avcodec_alloc_context3(codec)");
+	LOGI("avcodec alloc context3");
 	picture= avcodec_alloc_frame();
-	LOGI("4. avcodec_alloc_frame()");
 
+	/* put sample parameters */
 	c->bit_rate = 400000;
+	/* resolution must be a multiple of two */
 	c->width = 352;
 	c->height = 288;
+	/* frames per second */
 	c->time_base= (AVRational){1,25};
-	c->gop_size = 10;
+	c->gop_size = 10; /* emit one intra frame every ten frames */
 	c->max_b_frames=1;
 	c->pix_fmt = PIX_FMT_YUV420P;
 
-	LOGI("5. set codec context");
+	if(codec_id == CODEC_ID_H264)
+		av_opt_set(c->priv_data, "preset", "slow", 0);
 
-	//if(codec_id == CODEC_ID_H264)
-		//av_opt_set(c->priv_data, "preset", "slow", 0);
-
-	LOGI("6.av_opt_set(c->priv_data ...");
-
+	/* open it */
 	if (avcodec_open2(c, codec, NULL) < 0) {
+		LOGE("could not open codec");
 		//fprintf(stderr, "could not open codec\n");
-		LOGI("6a. could not open codec");
 		exit(1);
 	}
-
 
 	f = fopen(native_filename, "wb");
 	if (!f) {
+		LOGE("Could not open file");
 		//fprintf(stderr, "could not open %s\n", filename);
-		LOGI("7a. could not open file %s", native_filename);
 		exit(1);
 	}
 
-
+	/* alloc image and output buffer */
 	outbuf_size = 100000 + 12*c->width*c->height;
 	outbuf = malloc(outbuf_size);
 
-	LOGI("8 create outbuffer");
-
-
+	/* the image can be allocated by any means and av_image_alloc() is
+	 * just the most convenient way if av_malloc() is to be used */
 	av_image_alloc(picture->data, picture->linesize,
 				   c->width, c->height, c->pix_fmt, 1);
 
-	LOGI("9 av image alloc");
-
+	/* encode 1 second of video */
 	for(i=0;i<25;i++) {
-		//fflush(stdout);
-
+		fflush(stdout);
+		/* prepare a dummy image */
+		/* Y */
 		for(y=0;y<c->height;y++) {
 			for(x=0;x<c->width;x++) {
 				picture->data[0][y * picture->linesize[0] + x] = x + y + i * 3;
 			}
 		}
 
+		/* Cb and Cr */
 		for(y=0;y<c->height/2;y++) {
 			for(x=0;x<c->width/2;x++) {
 				picture->data[1][y * picture->linesize[1] + x] = 128 + y + i * 2;
@@ -262,14 +257,16 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_testFFMPEG(JNIEnv * env,
 			}
 		}
 
+		/* encode the image */
 		out_size = avcodec_encode_video(c, outbuf, outbuf_size, picture);
 		had_output |= out_size;
 		//printf("encoding frame %3d (size=%5d)\n", i, out_size);
 		fwrite(outbuf, 1, out_size, f);
 	}
 
+	/* get the delayed frames */
 	for(; out_size || !had_output; i++) {
-		//fflush(stdout);
+		fflush(stdout);
 
 		out_size = avcodec_encode_video(c, outbuf, outbuf_size, NULL);
 		had_output |= out_size;
@@ -277,6 +274,7 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_testFFMPEG(JNIEnv * env,
 		fwrite(outbuf, 1, out_size, f);
 	}
 
+	/* add sequence end code to have a real mpeg file */
 	outbuf[0] = 0x00;
 	outbuf[1] = 0x00;
 	outbuf[2] = 0x01;
@@ -290,6 +288,7 @@ void Java_net_openwatch_openwatch2_video_FFVideoEncoder_testFFMPEG(JNIEnv * env,
 	av_free(picture->data[0]);
 	av_free(picture);
 	//printf("\n");
+	LOGI("example success!");
 
 }
 

@@ -76,6 +76,10 @@ int audio_outbuf_size;
 int audio_input_frame_size;
 int audio_frame_count;
 
+/* CODEC_IDs */
+int AUDIO_CODEC_ID = CODEC_ID_AAC;
+int VIDEO_CODEC_ID = CODEC_ID_H264;
+
 /*
  * add an audio output stream
  */
@@ -84,7 +88,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     AVCodecContext *c;
     AVStream *st;
 
-    st = av_new_stream(oc, 1);
+    st = avformat_new_stream(oc, NULL);
     if (!st) {
         fprintf(stderr, "Could not alloc stream\n");
         exit(1);
@@ -110,50 +114,26 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
 static void open_audio(AVFormatContext *oc, AVStream *st)
 {
     AVCodecContext *c;
-    AVCodec *codec;
 
     c = st->codec;
 
-    /* find the audio encoder */
-    codec = avcodec_find_encoder(c->codec_id);
-    if (!codec) {
-        fprintf(stderr, "codec not found\n");
-        exit(1);
-    }
-
     /* open it */
-    if (avcodec_open(c, codec) < 0) {
-        fprintf(stderr, "could not open codec\n");
+    if (avcodec_open2(c, NULL, NULL) < 0) {
+        LOGE("could not open audio codec");
+    	//fprintf(stderr, "could not open codec\n");
         exit(1);
     }
-
-    /* init signal generator */
-    t = 0;
-    tincr = 2 * M_PI * 110.0 / c->sample_rate;
-    /* increment frequency by 110 Hz per second */
-    tincr2 = 2 * M_PI * 110.0 / c->sample_rate / c->sample_rate;
 
     audio_outbuf_size = 10000;
     audio_outbuf = av_malloc(audio_outbuf_size);
 
-    /* ugly hack for PCM codecs (will be removed ASAP with new PCM
-       support to compute the input frame size in samples */
-    if (c->frame_size <= 1) {
-        audio_input_frame_size = audio_outbuf_size / c->channels;
-        switch(st->codec->codec_id) {
-        case CODEC_ID_PCM_S16LE:
-        case CODEC_ID_PCM_S16BE:
-        case CODEC_ID_PCM_U16LE:
-        case CODEC_ID_PCM_U16BE:
-            audio_input_frame_size >>= 1;
-            break;
-        default:
-            break;
-        }
-    } else {
-        audio_input_frame_size = c->frame_size;
-    }
-    samples = av_malloc(audio_input_frame_size * 2 * c->channels);
+    if (c->codec->capabilities & CODEC_CAP_VARIABLE_FRAME_SIZE)
+            audio_input_frame_size = 10000;
+	else
+		audio_input_frame_size = c->frame_size;
+	samples = av_malloc(audio_input_frame_size *
+						av_get_bytes_per_sample(c->sample_fmt) *
+						c->channels);
 }
 
 /* prepare a 16 bit dummy audio frame of 'frame_size' samples and
@@ -176,35 +156,35 @@ static void get_audio_frame(int16_t *samples, int frame_size, int nb_channels)
 static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 {
     AVCodecContext *c;
-    AVPacket pkt;
-    av_init_packet(&pkt);
+    AVPacket pkt = { 0 }; // data and size must be 0;
+    AVFrame *frame = avcodec_alloc_frame();
+    int got_packet;
 
+    av_init_packet(&pkt);
     c = st->codec;
 
-    // we'll populate samples in encodeFrame(...)
-    //get_audio_frame(samples, audio_input_frame_size, c->channels);
+    // samples is populated in processAVData(...)
 
-    pkt.size= avcodec_encode_audio(c, audio_outbuf, audio_outbuf_size, samples);
+    frame->nb_samples = audio_input_frame_size;
+	avcodec_fill_audio_frame(frame, c->channels, c->sample_fmt,
+							 (uint8_t *)samples,
+							 audio_input_frame_size *
+							 av_get_bytes_per_sample(c->sample_fmt) *
+							 c->channels, 1);
 
-    if (c->coded_frame && c->coded_frame->pts != AV_NOPTS_VALUE){
-        pkt.pts= av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
-        LOGI("audio pkt.pts set: %d", pkt.pts);
-    }
-    pkt.flags |= AV_PKT_FLAG_KEY;
-    pkt.stream_index= st->index;
-    pkt.data= audio_outbuf;
-    //pkt.pts = audio_frame_count;
-    //pkt.dts = audio_frame_count;
-    audio_frame_count ++;
+	avcodec_encode_audio2(c, &pkt, frame, &got_packet);
+	if (!got_packet)
+		return;
 
-    /* write the compressed frame in the media file */
-    // TESTING: force Audio frame PTS to Video frame PTS
-    //pkt.pts = last_video_frame_pts;
-    LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration); // int64_t. in AVStream->time_base units
-    if (av_interleaved_write_frame(oc, &pkt) != 0) {
-        fprintf(stderr, "Error while writing audio frame\n");
-        exit(1);
-    }
+	pkt.stream_index = st->index;
+
+	LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration); // int64_t. in AVStream->time_base units
+
+	/* Write the compressed frame to the media file. */
+	if (av_interleaved_write_frame(oc, &pkt) != 0) {
+		fprintf(stderr, "Error while writing audio frame\n");
+		exit(1);
+	}
 }
 
 static void close_audio(AVFormatContext *oc, AVStream *st)
@@ -227,16 +207,32 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
 {
     AVCodecContext *c;
     AVStream *st;
+    AVCodec *codec;
 
-    st = av_new_stream(oc, 0);
+    /* find the video encoder */
+    codec = avcodec_find_encoder(codec_id);
+    if (!codec) {
+	    LOGE("codec not found");
+    	//fprintf(stderr, "codec not found\n");
+	    exit(1);
+    }
+
+    // Adds a stream to oc's output file and initializes the
+    // AVCodecContext with codec-specific defaults
+    st = avformat_new_stream(oc, codec);
+
     if (!st) {
-        fprintf(stderr, "Could not alloc stream\n");
+        LOGE("could not alloc stream");
+    	//fprintf(stderr, "Could not alloc stream\n");
         exit(1);
     }
 
     c = st->codec;
+
+    avcodec_get_context_defaults3(c, codec);
+
     c->codec_id = codec_id;
-    c->codec_type = AVMEDIA_TYPE_VIDEO;
+    //c->codec_type = AVMEDIA_TYPE_VIDEO;
 
     /* put sample parameters */
     c->bit_rate = 400000;
@@ -290,21 +286,16 @@ static AVFrame *alloc_picture(enum PixelFormat pix_fmt, int width, int height)
 
 static void open_video(AVFormatContext *oc, AVStream *st)
 {
-    AVCodec *codec;
     AVCodecContext *c;
 
     c = st->codec;
 
-    /* find the video encoder */
-    codec = avcodec_find_encoder(c->codec_id);
-    if (!codec) {
-        fprintf(stderr, "codec not found\n");
-        exit(1);
-    }
+    // TESTING: Cannot open video codec from AVCodecContext
 
     /* open the codec */
-    if (avcodec_open(c, codec) < 0) {
-        fprintf(stderr, "could not open codec\n");
+    if (avcodec_open2(c, NULL, NULL) < 0) {
+    	LOGE("could not open video codec");
+    	//fprintf(stderr, "could not open codec\n");
         exit(1);
     }
 
@@ -396,23 +387,17 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
                 pkt.pts= av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
             if(c->coded_frame->key_frame)
                 pkt.flags |= AV_PKT_FLAG_KEY;
+
             pkt.stream_index= st->index;
             pkt.data= video_outbuf;
             pkt.size= out_size;
-            //LOGI("Prepared to write interleaved frame");
-
-            LOGI("first_video_frame_time: %ld",first_video_frame_timestamp);
+            //LOGI("first_video_frame_time: %ld",first_video_frame_timestamp);
 
             // Determine video pts by ms time difference since last frame + recorded frame count
-            //double video_gap = (current_video_frame_timestamp - last_video_frame_timestamp) / ((double) 1000); // ms converted to s
             double video_gap = (current_video_frame_timestamp - first_video_frame_timestamp) / ((double) 1000); // seconds
             double time_base = ((double) st->time_base.num) / (st->time_base.den);
             // %ld - long,  %d - int, %f double/float
-            //LOGI("VIDEO_TB_NUM: %d DEN: %d",st->time_base.num, st->time_base.den);
             LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f PTS %"  PRId64, video_gap, time_base, (int)(video_gap / time_base));
-            //LOGI("VIDEO_FRAME_GAP_FRAMES: %f rounded: %d", video_gap * time_base, (int)(video_gap * time_base));
-
-            //pkt.pts =  (int)(video_gap / time_base) + video_frame_count;
 
             int proposed_pts = (int)(video_gap / time_base);
             if(last_pts != -1 && proposed_pts == last_pts){
@@ -438,7 +423,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         exit(1);
     }
     video_frame_count++;
-    // stream of indeterminate length
+
 }
 
 static void close_video(AVFormatContext *oc, AVStream *st)
@@ -527,7 +512,7 @@ void encodeVideoFrame(jbyteArray *native_video_frame_data, jlong this_video_fram
 
 		for(y=0;y<c->height;y++) {
 			for(x=0;x<c->width;x++) {
-				picture->data[0][y * picture->linesize[0] + x] = native_video_frame_data[0];
+				picture->data[0][y * picture->linesize[0] + x] = (int)native_video_frame_data[0];
 				native_video_frame_data++;
 			}
 		}
@@ -535,8 +520,8 @@ void encodeVideoFrame(jbyteArray *native_video_frame_data, jlong this_video_fram
 		/* Cb and Cr */
 		for(y=0;y<c->height/2;y++) {
 			for(x=0;x<c->width/2;x++) {
-				picture->data[2][y * picture->linesize[2] + x] = native_video_frame_data[0];
-				picture->data[1][y * picture->linesize[1] + x] = native_video_frame_data[1];
+				picture->data[2][y * picture->linesize[2] + x] = (int)native_video_frame_data[0];
+				picture->data[1][y * picture->linesize[1] + x] = (int)native_video_frame_data[1];
 				native_video_frame_data+=2;
 			}
 		}
@@ -795,7 +780,32 @@ int initializeAVFormatContext(){
 
 	av_register_all();
 
-	//LOGI("2. initializingAVFormatContext with file: %s", native_output_file1);
+	//TESTING
+	AVCodecContext *new_ctx;
+	AVCodec *new_codec = avcodec_find_encoder(CODEC_ID_MP2);
+	if(!new_codec)
+		LOGE("failed to open codec");
+	else
+		LOGI("found codec!");
+
+	new_ctx = avcodec_alloc_context3(new_codec);
+
+	if(new_ctx == NULL)
+		LOGE("Failed to allocate context");
+
+	if (avcodec_open2(new_ctx, new_codec, NULL) == 0)
+		LOGI("opened codec!");
+	else{
+		LOGI("Failed to open codec");
+		if(avcodec_open(new_ctx, new_codec) == 0)
+			LOGI("Opened codec with avcodec_open");
+		else
+			LOGE("Failed to open codec with avcodec_open");
+	}
+
+	// END TESTING
+
+	LOGI("2. initializingAVFormatContext with file: %s", native_output_file1);
 
 	/* allocate the output media context */
 	avformat_alloc_output_context2(&oc, NULL, NULL, ((const char*) native_output_file1));
@@ -808,9 +818,14 @@ int initializeAVFormatContext(){
 		LOGE("a.0.e Could not init AVFormatContext");
 		exit(1);
 	}
+
+	// set A/V Codecs
+	//oc->oformat->video_codec = VIDEO_CODEC_ID;
+	//oc->oformat->audio_codec = AUDIO_CODEC_ID;
+
 	fmt= oc->oformat;
 
-	//LOGI("3. initializeAVFormatContext");
+	LOGI("3. initializeAVFormatContext");
 
 	/* add the audio and video streams using the default format codecs
 	   and initialize the codecs */
@@ -818,21 +833,25 @@ int initializeAVFormatContext(){
 	audio_st = NULL;
 	if (fmt->video_codec != CODEC_ID_NONE) {
 		video_st = add_video_stream(oc, fmt->video_codec);
+		LOGI("added video stream");
 	}
 	if (fmt->audio_codec != CODEC_ID_NONE) {
 		audio_st = add_audio_stream(oc, fmt->audio_codec);
+		LOGI("added audio stream");
 	}
 
-	//LOGI("4. set AVFormat codecs");
+	LOGI("4. set AVFormat codecs");
 
-	av_dump_format(oc, 0, native_output_file1, 1);
-
-	/* now that all the parameters are set, we can open the audio and
+	/* Now that all the parameters are set, we can open the audio and
 	   video codecs and allocate the necessary encode buffers */
 	if (video_st)
 		open_video(oc, video_st);
 	if (audio_st)
 		open_audio(oc, audio_st);
+
+	av_dump_format(oc, 0, native_output_file1, 1);
+
+	LOGI("open_video and audio");
 
 	/* open the output file, if needed */
 	if (!(fmt->flags & AVFMT_NOFILE)) {
@@ -849,7 +868,7 @@ int initializeAVFormatContext(){
 	/* write the stream header, if any */
 	//av_write_header(oc);
 	avformat_write_header(oc,NULL);
-	//LOGI("5. write file header");
+	LOGI("5. write file header");
 
 	LOGI("video frame size: %d, audio frame size: %d", video_st->codec->frame_size, audio_st->codec->frame_size);
 

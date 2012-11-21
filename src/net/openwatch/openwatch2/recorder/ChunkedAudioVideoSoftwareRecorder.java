@@ -10,6 +10,7 @@ import java.util.List;
 import net.openwatch.openwatch2.audio.AudioSoftwarePoller;
 import net.openwatch.openwatch2.audio.AudioSoftwareRecorder;
 import net.openwatch.openwatch2.video.FFChunkedVideoEncoder;
+import net.openwatch.openwatch2.recorder.FFNewChunkedAudioVideoEncoder;
 
 import android.annotation.SuppressLint;
 import android.graphics.ImageFormat;
@@ -28,7 +29,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	public static boolean is_recording = false;
 	public static boolean got_first_video_frame = false;
 
-	private static FFChunkedAudioVideoEncoder ffencoder;
+	private static FFNewChunkedAudioVideoEncoder ffencoder;
 
 	private String output_filename_base = "";
 
@@ -57,7 +58,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		//Debug.startMethodTracing("AV_Profiling");
 		
 		// Ready FFEncoder
-		ffencoder = new FFChunkedAudioVideoEncoder();
+		ffencoder = new FFNewChunkedAudioVideoEncoder();
 		chunk = 1;
 		
 		// num_samples is the # of audio samples / frame
@@ -69,7 +70,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		chunk += 2;
 
 		// Attach AudioSoftwarePoller to FFEncoder. Calls ffencoder.encodeAudioFrame(...)
-		audio_recorder = new AudioSoftwarePoller(ffencoder);
+		audio_recorder = new AudioSoftwarePoller();
 		audio_recorder.recorderTask.samples_per_frame = num_samples;
 		Log.i("AUDIO_FRAME_SIZE",
 				"audio frame size: " + String.valueOf(num_samples));

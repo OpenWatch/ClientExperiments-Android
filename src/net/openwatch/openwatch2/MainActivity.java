@@ -5,6 +5,8 @@ import java.util.Date;
 
 import net.openwatch.openwatch2.camera.CameraPreview;
 import net.openwatch.openwatch2.recorder.ChunkedAudioVideoSoftwareRecorder;
+import net.openwatch.openwatch2.video.FFVideoEncoder;
+import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
 import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
@@ -51,11 +53,19 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
+				/*
+				File output_dir_file = new File(OUTPUT_DIR);
+				if (!output_dir_file.exists())
+					output_dir_file.mkdir();
+				output_filename = OUTPUT_DIR + String.valueOf(new Date().getTime());
+				FFVideoEncoder.testFFMPEG(output_filename + "H264.mp4");
+					//VideoSoftwareRecorder.startRecording((SurfaceView) MainActivity.this.findViewById(R.id.camera_surface_view), new File(output_filename));
+				*/
+				
+				
 				if (av_recorder.is_recording) {
-
 					av_recorder.stopRecording();
 					((Button) v).setText("Start Recording");
-
 				} else {
 					// Start camera preview
 					//FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
@@ -76,6 +86,7 @@ public class MainActivity extends Activity {
 
 					((Button) v).setText("Stop Recording");
 				}
+				
 			}
 
 		});
