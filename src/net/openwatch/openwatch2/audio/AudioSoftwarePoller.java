@@ -15,7 +15,11 @@ import android.util.Log;
 public class AudioSoftwarePoller {
 
 	public static final String TAG = "AudioRecorder";
-		
+	
+	public static final int SAMPLE_RATE = 44100;
+	public static final int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
+	public static final int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
+	
 	public static boolean is_recording = false;
 	
 	public RecorderTask recorderTask = new RecorderTask();
@@ -53,9 +57,11 @@ public class AudioSoftwarePoller {
 		read_index = recorderTask.buffer_read_index;
 		write_index = recorderTask.buffer_write_index;
 		
-		if(write_index == 0)
+		if(write_index == 0){
+			Log.i("AUDIO_READ_BUFFER", "Buffer empty");
+			read_distance = 0;
 			return audio_samples; // if samples aren't ready, there's nothing to do
-		
+		}
 		// Compute distance between read & write indexes in circular buffer
 		if(write_index < read_index)
 			distance = recorderTask.buffer_size - Math.abs((write_index - read_index));
@@ -74,6 +80,8 @@ public class AudioSoftwarePoller {
 			System.arraycopy(recorderTask.data_buffer, 0, audio_samples, tail_distance-1, read_distance - tail_distance);
 		}else
 			System.arraycopy(recorderTask.data_buffer, read_index, audio_samples, 0, read_distance);
+		
+		Log.i("AUDIO_READ_BUFFER",String.valueOf(read_index) + " - " + String.valueOf(write_index) + "dist: "+ String.valueOf(read_distance));
 		
 		recorderTask.buffer_read_index = write_index;
 		return audio_samples;
@@ -115,11 +123,16 @@ public class AudioSoftwarePoller {
 		@Override
 		protected Object doInBackground(Object... params) {
 			
-			//audio_encoder = new FFAudioEncoder();
-			
-			//int samples_per_frame = audio_encoder.initializeEncoder();
+			int min_buffer_size = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
+
 			buffer_size = samples_per_frame * FRAMES_PER_BUFFER;
-			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples");
+			
+			// Some audio codecs have extremeley small frame sizes
+			// ensure our buffer is adequately sized
+			if(buffer_size < min_buffer_size)
+				buffer_size = ((min_buffer_size / samples_per_frame) + 1) * samples_per_frame * 2;
+			
+			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples, min: " + String.valueOf(min_buffer_size));
 			Log.i(TAG,"audio frame size: " + String.valueOf(samples_per_frame));
 			notification_period = samples_per_frame;
 			data_buffer = new short[buffer_size]; // filled directly by hardware
@@ -127,12 +140,12 @@ public class AudioSoftwarePoller {
 			AudioRecord audio_recorder;			
 			audio_recorder = new AudioRecord(
 					MediaRecorder.AudioSource.MIC, 		 // source
-					44100, 								 // sample rate, hz
-					AudioFormat.CHANNEL_IN_MONO,		 // channels 
-					AudioFormat.ENCODING_PCM_16BIT, 	 // bit depth
-					buffer_size/2); 					 // buffer size (bytes)
+					SAMPLE_RATE, 						 // sample rate, hz
+					CHANNEL_CONFIG,		 				 // channels 
+					AUDIO_FORMAT, 	 					 // audio format
+					buffer_size);	 					 // buffer size (bytes)
 			
-			
+			/*
 			audio_recorder.setPositionNotificationPeriod(notification_period);
 			audio_recorder.setRecordPositionUpdateListener(new OnRecordPositionUpdateListener(){
 
@@ -152,16 +165,16 @@ public class AudioSoftwarePoller {
 					//Log.i("AUDIO_REC", "onPeriodicNotification: " + String.valueOf(audio_data));
 					//Log.i("AUDIO_REC", "periodicNotification on thread: " + Thread.currentThread().getName());
 					//if(!is_recording){
-					/*
-					if(!is_recording && audio_recorder != null){
-						audio_recorder.setRecordPositionUpdateListener(null);
-						audio_recorder.release();
-						audio_recorder = null;
-						Log.i("AUDIO_REC", "Audio polling stopped");
-					}*/
+					
+					//if(!is_recording && audio_recorder != null){
+					//	audio_recorder.setRecordPositionUpdateListener(null);
+					//	audio_recorder.release();
+					//	audio_recorder = null;
+					//	Log.i("AUDIO_REC", "Audio polling stopped");
+					//}
 				}
 				
-			});
+			});*/
 			
 			is_recording = true;
 			audio_recorder.startRecording();

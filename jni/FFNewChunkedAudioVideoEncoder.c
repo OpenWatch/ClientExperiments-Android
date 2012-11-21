@@ -45,6 +45,8 @@ long current_video_frame_timestamp;
 int last_pts; // last frame's PTS. Ensure current frame pts > last_pts
 int video_frame_count;
 
+// Safety
+int safe_to_encode = 1; // Ensure no collisions writing audio / video, initializing, and finalizing
 
 ////////////////////////////////////////////
 //             Video Methods              //
@@ -134,8 +136,20 @@ static void open_video(AVFormatContext *oc, AVStream *st)
 
     c = st->codec;
 
+    // Though I've tested that st->codec->codec_id == CODEC_ID_H264
+    // at this point, avcodec_open2 fails unless I explicitly pass
+    // a AVCodec...
+    AVCodec *codec;
+    /* find the video encoder */
+	codec = avcodec_find_encoder(CODEC_ID_H264);
+	if (!codec) {
+		LOGE("open_video codec not found");
+		//fprintf(stderr, "codec not found\n");
+		exit(1);
+	}
+	LOGI("open_video stream codec_id: %d", c->codec_id);
     /* open the codec */
-    if (avcodec_open2(c, NULL, NULL) < 0) {
+    if (avcodec_open2(c, codec, NULL) < 0) {
         LOGE("open_video could not open codec");
         if(c->codec_id == CODEC_ID_H264)
         	LOGE("c->codec_id is CODEC_ID_H264");
@@ -170,10 +184,12 @@ static void open_video(AVFormatContext *oc, AVStream *st)
     if (c->pix_fmt != PIX_FMT_YUV420P) {
         tmp_picture = alloc_picture(PIX_FMT_YUV420P, c->width, c->height);
         if (!tmp_picture) {
-            fprintf(stderr, "Could not allocate temporary picture\n");
+            LOGE("Could not allocate temporary picture");
+        	//fprintf(stderr, "Could not allocate temporary picture\n");
             exit(1);
         }
     }
+    LOGI("open_video success");
 }
 
 static void write_video_frame(AVFormatContext *oc, AVStream *st)
@@ -238,6 +254,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.data         = video_outbuf;
             pkt.size         = out_size;
 
+            LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             /* Write the compressed frame to the media file. */
             ret = av_interleaved_write_frame(oc, &pkt);
         } else {
@@ -245,7 +262,8 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
         }
     }
     if (ret != 0) {
-        fprintf(stderr, "Error while writing video frame\n");
+        LOGE("Error writing video frame");
+    	//fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
     frame_count++;
@@ -283,12 +301,13 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
         LOGE("add_audio_stream codec not found");
         exit(1);
     }
-
+    LOGI("add_audio_stream found codec_id: %d",codec_id);
     st = avformat_new_stream(oc, codec);
     if (!st) {
     	LOGE("add_audio_stream could not alloc stream");
         exit(1);
     }
+
     st->id = 1;
 
     c = st->codec;
@@ -303,6 +322,17 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     if (oc->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
 
+    //TESTING
+    /* open the codec */
+	if (avcodec_open2(c, codec, NULL) < 0) {
+		LOGE("add_audio_stream could not open codec %d", codec->id);
+		if(c->codec_id == CODEC_ID_AAC)
+			LOGE("c->codec_id is CODEC_ID_AAC");
+		//fprintf(stderr, "could not open codec\n");
+		exit(1);
+	}
+    //TESTING
+
     return st;
 }
 
@@ -312,9 +342,22 @@ static void open_audio(AVFormatContext *oc, AVStream *st)
 
     c = st->codec;
 
+    // Though I've tested that st->codec->codec_id == CODEC_ID_AAC
+	// at this point, avcodec_open2 fails unless I explicitly pass
+	// a AVCodec...
+	AVCodec *codec;
+	/* find the video encoder */
+	codec = avcodec_find_encoder(CODEC_ID_MP2);
+	if (!codec) {
+		LOGE("open_audio codec not found");
+		//fprintf(stderr, "codec not found\n");
+		exit(1);
+	}
+	LOGI("open_audio stream codec_id: %d", c->codec_id);
     /* open it */
-    if (avcodec_open2(c, NULL, NULL) < 0) {
-        fprintf(stderr, "could not open codec\n");
+    if (avcodec_open2(c, codec, NULL) < 0) {
+        LOGE("open_audio could not open codec");
+    	//fprintf(stderr, "could not open codec\n");
         exit(1);
     }
 
@@ -351,6 +394,8 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     pkt.stream_index = st->index;
 
+    LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration);
+
     /* Write the compressed frame to the media file. */
     if (av_interleaved_write_frame(oc, &pkt) != 0) {
         fprintf(stderr, "Error while writing audio frame\n");
@@ -376,7 +421,6 @@ static void close_audio(AVFormatContext *oc, AVStream *st)
  * each new video chunk
  */
 int initializeAVFormatContext(){
-
 	// TODO: Can we do this only once?
 	/* Initialize libavcodec, and register all codecs and formats. */
 	av_register_all();
@@ -389,7 +433,8 @@ int initializeAVFormatContext(){
 		avformat_alloc_output_context2(&oc, NULL, "mpeg", ((const char*) native_output_file1));
 	}
 	if (!oc) {
-		return 1;
+		LOGE("Could not allocate output context");
+		exit(1);
 	}
 
 	LOGI("avformat_alloc_output_context2");
@@ -397,7 +442,7 @@ int initializeAVFormatContext(){
 
 	// Force AVOutputFormat video/audio codec
 	fmt->video_codec = CODEC_ID_H264;
-	fmt->audio_codec = CODEC_ID_AAC;
+	fmt->audio_codec = CODEC_ID_MP2;
 
 	/* Add the audio and video streams using the default format codecs
 	 * and initialize the codecs. */
@@ -430,6 +475,8 @@ int initializeAVFormatContext(){
 	/* Write the stream header, if any. */
 	avformat_write_header(oc, NULL);
 	LOGI("avformat_write_header");
+
+	return audio_st->codec->frame_size;
 }
 
 void finalizeAVFormatContext(){
@@ -437,6 +484,8 @@ void finalizeAVFormatContext(){
 	 * close the CodecContexts open when you wrote the header; otherwise
 	 * av_write_trailer() may try to use memory that was freed on
 	 * av_codec_close(). */
+
+	LOGI("finalizeAVFormatContext");
 	av_write_trailer(oc);
 
 	/* Close each codec. */
@@ -457,15 +506,17 @@ void finalizeAVFormatContext(){
 
 	/* free the stream */
 	av_free(oc);
-
 }
 
 ////////////////////////////////////////////
 //             JNI Methods                //
 ////////////////////////////////////////////
 
-void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_internalInitializeEncoder(JNIEnv * env, jobject this, jstring filename1, jstring filename2, jint width, jint height, jint fps){
+int Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_internalInitializeEncoder(JNIEnv * env, jobject this, jstring filename1, jstring filename2, jint width, jint height, jint fps){
 
+	while(safe_to_encode != 1) // temp hack
+		continue;
+	safe_to_encode = 0;
 	// Convert Java types
 	//const jbyte *native_filename1, *native_filename2;
 	native_output_file1 = (*env)->GetStringUTFChars(env, filename1, NULL);
@@ -476,11 +527,18 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_intern
 	output_height = (int) height;
 	output_width = (int) width;
 
-	initializeAVFormatContext();
 	LOGI("1. internalInitializeEncoder()");
+	safe_to_encode = 1;
+	return initializeAVFormatContext();
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_processAVData(JNIEnv * env, jobject this, jbyteArray video_frame_data, jlong this_video_frame_timestamp, jshortArray audio_data, jint audio_length){
+
+	while(safe_to_encode != 1) // temp hack
+		continue;
+
+	safe_to_encode = 0;
+
 	LOGI("processAVData");
 
 	AVCodecContext *c;
@@ -528,11 +586,11 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 	LOGI("ENCODE-VIDEO-1");
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
 
-	LOGI("encodeVideoFrame complete");
-
 	// AUDIO
-	if(audio_data == NULL)
+	if(audio_data == NULL){
+		safe_to_encode = 1;
 		return; // no audio data present
+	}
 	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_data, NULL);
 
 
@@ -562,6 +620,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 
 	LOGI("encodeAudioFrame complete");
 
+	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_shiftEncoders(JNIEnv * env, jobject this, jstring new_filename){
@@ -569,6 +628,11 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_shiftE
 	// Point the new buffer at the given new_filename
 	// Must be called after finalizeEncoder();
 
+	while(safe_to_encode != 1) // temp hack
+		continue;
+	safe_to_encode = 0;
+
+	LOGI("shiftEncoders");
 	finalizeAVFormatContext();
 
 	const jbyte *native_new_filename;
@@ -580,9 +644,14 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_shiftE
 
 	initializeAVFormatContext();
 
+	safe_to_encode = 1;
 }
 
 void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_finalizeEncoder(JNIEnv * env, jobject this, jint is_final){
+
+	while(safe_to_encode != 1) // temp hack
+		continue;
+	safe_to_encode = 0;
 
 	LOGI("finalize file %s", native_output_file1);
 
@@ -593,4 +662,5 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_finali
 		unlink(native_output_file2);
 
 	finalizeAVFormatContext();
+	safe_to_encode = 1;
 }
