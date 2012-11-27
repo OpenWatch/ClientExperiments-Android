@@ -31,8 +31,10 @@ int i;
 // Stream Parameters
 #define STREAM_PIX_FMT PIX_FMT_YUV420P
 int device_frame_rate = 15;
+//int sample_fmt = AV_SAMPLE_FMT_FLT; // required for native aac
+int sample_fmt = AV_SAMPLE_FMT_S16;
 int VIDEO_CODEC_ID = CODEC_ID_H264;
-int AUDIO_CODEC_ID = CODEC_ID_AAC;
+int AUDIO_CODEC_ID = CODEC_ID_MP2;
 
 // Audio Parameters
 static int16_t *samples;
@@ -338,7 +340,8 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     LOGI("strict_std_compliance: %d FF_COM_EXP: %d", c->strict_std_compliance, FF_COMPLIANCE_EXPERIMENTAL);
     c->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL; // for native aac support
     /* put sample parameters */
-    c->sample_fmt  = AV_SAMPLE_FMT_FLT;
+    //c->sample_fmt  = AV_SAMPLE_FMT_FLT;
+    c->sample_fmt  = sample_fmt;
     c->bit_rate    = 64000;
     c->sample_rate = audio_sample_rate;
     c->channels    = 1;
@@ -735,6 +738,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		LOGI("ENCODE_AUDIO-0");
 		// Convert audio samples to proper format
 		//jshort (*converted_native_audio_frame_data)[audio_length];
+		/*
 		short *converted_native_audio_frame_data = malloc(sizeof(short) * audio_length);
 		int swr_convert_err = 0;
 		swr_convert_err = swr_convert(audio_convert,		// allocated Swr context, with parameters set
@@ -744,6 +748,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 					audio_length / num_audio_channels);  	// number of input samples available in one channel
 		if(swr_convert_err < 0)
 			LOGE("swr_convert returned error %d", swr_convert_err);
+		*/
 
 		int x = 0;
 		for(x=0;x<num_frames;x++){ // for each audio frame
@@ -751,13 +756,15 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 			//LOG("Audio frame size: %d", audio_input_frame_size);
 
 			for(y=0;y<audio_input_frame_size;y++){ // copy each sample
-				samples[y] = (int)(converted_native_audio_frame_data[0]);
-				converted_native_audio_frame_data++;
+				samples[y] = (int)(native_audio_frame_data[0]);
+				native_audio_frame_data++;
+				//samples[y] = (int)(converted_native_audio_frame_data[0]);
+				//converted_native_audio_frame_data++;
 				audio_sample_count++;
 			}
 			write_audio_frame(oc, audio_st);
 		}
-		free(converted_native_audio_frame_data);
+		//free(converted_native_audio_frame_data);
 		LOGI("ENCODE_AUDIO-1");
 	}
 
