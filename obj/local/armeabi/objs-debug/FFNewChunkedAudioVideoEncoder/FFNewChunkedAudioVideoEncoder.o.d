@@ -68,7 +68,8 @@
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/avio.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavutil/common.h \
  /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/version.h \
- /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libswscale/swscale.h
+ /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libswscale/swscale.h \
+ /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libswresample/swresample.h
 
 /Applications/android-ndk-r8b/platforms/android-14/arch-arm/usr/include/stdlib.h:
 
@@ -207,3 +208,5 @@
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libavformat/version.h:
 
 /Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libswscale/swscale.h:
+
+/Users/davidbrodsky/Documents/android/OpenWatch2-Android/jni/ffmpeg/libswresample/swresample.h:

@@ -81,9 +81,10 @@ public class AudioSoftwarePoller {
 		}else
 			System.arraycopy(recorderTask.data_buffer, read_index, audio_samples, 0, read_distance);
 		
-		Log.i("AUDIO_READ_BUFFER",String.valueOf(read_index) + " - " + String.valueOf(write_index) + "dist: "+ String.valueOf(read_distance));
+		//Log.i("AUDIO_READ_BUFFER",String.valueOf(read_index) + " - " + String.valueOf(write_index-1) + " dist: "+ String.valueOf(read_distance));
 		
 		recorderTask.buffer_read_index = write_index;
+		recorderTask.total_frames_read += (distance / recorderTask.samples_per_frame);
 		return audio_samples;
 	}
 	
@@ -184,7 +185,7 @@ public class AudioSoftwarePoller {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
 	            audio_recorder.read(data_buffer, buffer_write_index, samples_per_frame);
-	            Log.i("AUDIO_FILL_BUFFER",String.valueOf(buffer_write_index) + " - " + String.valueOf(buffer_write_index + samples_per_frame-1));
+	            //Log.i("AUDIO_FILL_BUFFER",String.valueOf(buffer_write_index) + " - " + String.valueOf(buffer_write_index + samples_per_frame-1));
 	            buffer_write_index = (buffer_write_index + samples_per_frame) % buffer_size;
 	            total_frames_written ++;
 	            //ffencoder.encodeAudioFrame(audio_read_data_buffer);
