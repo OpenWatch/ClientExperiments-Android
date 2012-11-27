@@ -457,7 +457,6 @@ static void close_audio(AVFormatContext *oc, AVStream *st)
  * each new video chunk
  */
 int initializeAVFormatContext(){
-	LOGI("sanity check--1");
 	video_frame_count = 0;
 	last_pts = -1;
 
