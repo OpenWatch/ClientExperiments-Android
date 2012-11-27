@@ -84,6 +84,7 @@ public class AudioSoftwarePoller {
 		Log.i("AUDIO_READ_BUFFER",String.valueOf(read_index) + " - " + String.valueOf(write_index) + "dist: "+ String.valueOf(read_distance));
 		
 		recorderTask.buffer_read_index = write_index;
+		recorderTask.total_frames_read += (distance / recorderTask.samples_per_frame);
 		return audio_samples;
 	}
 	

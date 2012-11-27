@@ -30,16 +30,21 @@ int i;
 // Stream Parameters
 #define STREAM_PIX_FMT PIX_FMT_YUV420P
 int device_frame_rate = 15;
+int VIDEO_CODEC_ID = CODEC_ID_H264;
+int AUDIO_CODEC_ID = CODEC_ID_AAC;
 
 // Audio Parameters
 static int16_t *samples;
 static int audio_input_frame_size;
+int num_audio_channels = 1;
+int audio_sample_rate = 44100;
+int audio_channel_layout = AV_CH_LAYOUT_MONO;
 
 // Video Paramteres
 static AVFrame *picture, *tmp_picture;
 static uint8_t *video_outbuf;
 static int sws_flags = SWS_BICUBIC;
-static int frame_count, video_outbuf_size;
+static int video_outbuf_size;
 long first_video_frame_timestamp;
 long current_video_frame_timestamp;
 int last_pts; // last frame's PTS. Ensure current frame pts > last_pts
@@ -141,7 +146,7 @@ static void open_video(AVFormatContext *oc, AVStream *st)
     // a AVCodec...
     AVCodec *codec;
     /* find the video encoder */
-	codec = avcodec_find_encoder(CODEC_ID_H264);
+	codec = avcodec_find_encoder(VIDEO_CODEC_ID);
 	if (!codec) {
 		LOGE("open_video codec not found");
 		//fprintf(stderr, "codec not found\n");
@@ -254,6 +259,19 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             pkt.data         = video_outbuf;
             pkt.size         = out_size;
 
+            // Determine video pts by ms time difference since last frame + recorded frame count
+			double video_gap = (current_video_frame_timestamp - first_video_frame_timestamp) / ((double) 1000); // seconds
+			double time_base = ((double) st->time_base.num) / (st->time_base.den);
+			// %ld - long,  %d - int, %f double/float
+			LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f PTS %"  PRId64, video_gap, time_base, (int)(video_gap / time_base));
+
+			int proposed_pts = (int)(video_gap / time_base);
+			if(last_pts != -1 && proposed_pts == last_pts){
+				proposed_pts ++;
+			}
+			pkt.pts = proposed_pts;
+			last_pts = proposed_pts;
+
             LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             /* Write the compressed frame to the media file. */
             ret = av_interleaved_write_frame(oc, &pkt);
@@ -266,7 +284,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
     	//fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
-    frame_count++;
+    video_frame_count++;
 }
 
 static void close_video(AVFormatContext *oc, AVStream *st)
@@ -313,9 +331,10 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     c = st->codec;
 
     /* put sample parameters */
-    c->sample_fmt  = AV_SAMPLE_FMT_S16;
+    c->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL; // for native aac support
+    c->sample_fmt  = AV_SAMPLE_FMT_FLT;
     c->bit_rate    = 64000;
-    c->sample_rate = 44100;
+    c->sample_rate = audio_sample_rate;
     c->channels    = 1;
 
     // some formats want stream headers to be separate
@@ -347,7 +366,7 @@ static void open_audio(AVFormatContext *oc, AVStream *st)
 	// a AVCodec...
 	AVCodec *codec;
 	/* find the video encoder */
-	codec = avcodec_find_encoder(CODEC_ID_MP2);
+	codec = avcodec_find_encoder(AUDIO_CODEC_ID);
 	if (!codec) {
 		LOGE("open_audio codec not found");
 		//fprintf(stderr, "codec not found\n");
@@ -421,6 +440,9 @@ static void close_audio(AVFormatContext *oc, AVStream *st)
  * each new video chunk
  */
 int initializeAVFormatContext(){
+	video_frame_count = 0;
+	last_pts = -1;
+
 	// TODO: Can we do this only once?
 	/* Initialize libavcodec, and register all codecs and formats. */
 	av_register_all();
@@ -440,9 +462,9 @@ int initializeAVFormatContext(){
 	LOGI("avformat_alloc_output_context2");
 	fmt = oc->oformat;
 
-	// Force AVOutputFormat video/audio codec
-	fmt->video_codec = CODEC_ID_H264;
-	fmt->audio_codec = CODEC_ID_MP2;
+	// Set AVOutputFormat video/audio codec
+	fmt->video_codec = VIDEO_CODEC_ID;
+	fmt->audio_codec = AUDIO_CODEC_ID;
 
 	/* Add the audio and video streams using the default format codecs
 	 * and initialize the codecs. */
