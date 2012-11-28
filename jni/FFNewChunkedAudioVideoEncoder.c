@@ -31,11 +31,11 @@ int i;
 // Stream Parameters
 #define STREAM_PIX_FMT PIX_FMT_YUV420P
 int device_frame_rate = 15;
-//int sample_fmt = AV_SAMPLE_FMT_FLT; // required for native aac
-int sample_fmt = AV_SAMPLE_FMT_S16;
+int sample_fmt = AV_SAMPLE_FMT_FLT; // required for native aac
+//int sample_fmt = AV_SAMPLE_FMT_S16;
 int VIDEO_CODEC_ID = CODEC_ID_H264;
-//int AUDIO_CODEC_ID = CODEC_ID_AAC;
-int AUDIO_CODEC_ID = CODEC_ID_MP2;
+int AUDIO_CODEC_ID = CODEC_ID_AAC;
+//int AUDIO_CODEC_ID = CODEC_ID_MP2;
 
 // Audio Parameters
 static int16_t *samples;
@@ -574,7 +574,7 @@ void finalizeAVFormatContext(){
 ////////////////////////////////////////////
 
 void allocRecordingStructs(){
-/*
+
 	audio_convert = swr_alloc_set_opts(audio_convert,
 			 	 	 	 	 	 	   audio_channel_layout,
 			 	 	 	 	 	 	   AV_SAMPLE_FMT_FLT,
@@ -587,11 +587,11 @@ void allocRecordingStructs(){
 
 	if(!audio_convert)
 		LOGE("could not allocate SwrContext");
-*/
+
 }
 
 void freeRecordingStructs(){
-	//swr_free(&audio_convert);
+	swr_free(&audio_convert);
 }
 
 
@@ -743,7 +743,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		//jshort (*converted_native_audio_frame_data)[audio_length];
 		// c short is 16 bits
 		// swr_convert expects uint8_t (bits)
-		/*
+
 		if(!audio_convert){
 			LOGE("audio_convert not allocated");
 			exit(-1);
@@ -751,16 +751,15 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		uint8_t *converted_native_audio_frame_data = malloc(sizeof(short) * audio_length);
 		LOGI("malloc converted_native_audio_frame_data");
 		int swr_convert_err = 0;
-		swr_convert_err = swr_convert(audio_convert,		// allocated Swr context, with parameters set
-					&converted_native_audio_frame_data,		// output buffers, only the first one need be set in case of packed audio
-					2*audio_length / num_audio_channels,  	// amount of space available for output in samples per channel
-					(const uint8_t**)&native_audio_frame_data,				// input buffers, only the first one need to be set in case of packed audio
-					2*audio_length / num_audio_channels);  	// number of input samples available in one channel
+		swr_convert_err = swr_convert(audio_convert,			// allocated Swr context, with parameters set
+					&converted_native_audio_frame_data,			// output buffers, only the first one need be set in case of packed audio
+					2*audio_length / num_audio_channels,  		// amount of space available for output in samples per channel
+					(const uint8_t**)&native_audio_frame_data,	// input buffers, only the first one need to be set in case of packed audio
+					2*audio_length / num_audio_channels);  		// number of input samples available in one channel
 		LOGI("swr_convert finished");
 		if(swr_convert_err < 0)
 			LOGE("swr_convert returned error %d", swr_convert_err);
 
-		 */
 		int x = 0;
 		for(x=0;x<num_frames;x++){ // for each audio frame
 			int audio_sample_count = 0;
