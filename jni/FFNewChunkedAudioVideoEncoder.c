@@ -31,19 +31,24 @@ int i;
 // Stream Parameters
 #define STREAM_PIX_FMT PIX_FMT_YUV420P
 int device_frame_rate = 15;
-int sample_fmt = AV_SAMPLE_FMT_FLT; // required for native aac
-//int sample_fmt = AV_SAMPLE_FMT_S16;
+int device_audio_sample_fmt = AV_SAMPLE_FMT_S16; // required for native aac
+int codec_audio_sample_fmt = AV_SAMPLE_FMT_FLT;
+//int audio_sample_fmt = AV_SAMPLE_FMT_S16;
 int VIDEO_CODEC_ID = CODEC_ID_H264;
 int AUDIO_CODEC_ID = CODEC_ID_AAC;
+//int AUDIO_CODEC_ID = CODEC_ID_AC3;
 //int AUDIO_CODEC_ID = CODEC_ID_MP2;
 
 // Audio Parameters
-static int16_t *samples;
+static float *samples;
 static int audio_input_frame_size;
 int num_audio_channels = 1;
 int audio_sample_rate = 44100;
 SwrContext *audio_convert;
 int64_t audio_channel_layout = AV_CH_LAYOUT_MONO;
+uint8_t *formatted_native_audio_frame_data[SWR_CH_MAX];
+uint8_t *converted_native_audio_frame_data[SWR_CH_MAX];
+int audio_channel_count = 0;
 
 // Video Paramteres
 static AVFrame *picture, *tmp_picture;
@@ -192,7 +197,8 @@ static void open_video(AVFormatContext *oc, AVStream *st)
     /* Allocate the encoded raw picture. */
     picture = alloc_picture(c->pix_fmt, c->width, c->height);
     if (!picture) {
-        fprintf(stderr, "Could not allocate picture\n");
+        LOGE("could not allocate picture");
+    	//fprintf(stderr, "Could not allocate picture\n");
         exit(1);
     }
     //LOGI("alloc_picture");
@@ -233,8 +239,9 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 											 c->pix_fmt,
 											 sws_flags, NULL, NULL, NULL);
 			if (img_convert_ctx == NULL) {
-				fprintf(stderr,
-						"Cannot initialize the conversion context\n");
+				LOGE("Cannot initialize the conversion context");
+				//fprintf(stderr,
+				//		"Cannot initialize the conversion context\n");
 				exit(1);
 			}
 		}
@@ -293,6 +300,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             /* Write the compressed frame to the media file. */
             ret = av_interleaved_write_frame(oc, &pkt);
+            LOGI("av_interleaved_write_frame success");
         } else {
             ret = 0;
         }
@@ -351,7 +359,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     c->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL; // for native aac support
     /* put sample parameters */
     //c->sample_fmt  = AV_SAMPLE_FMT_FLT;
-    c->sample_fmt  = sample_fmt;
+    c->sample_fmt  = codec_audio_sample_fmt;
     c->bit_rate    = 64000;
     c->sample_rate = audio_sample_rate;
     c->channels    = 1;
@@ -577,21 +585,71 @@ void allocRecordingStructs(){
 
 	audio_convert = swr_alloc_set_opts(audio_convert,
 			 	 	 	 	 	 	   audio_channel_layout,
-			 	 	 	 	 	 	   AV_SAMPLE_FMT_FLT,
+			 	 	 	 	 	 	   codec_audio_sample_fmt,
 			 	 	 	 	 	 	   audio_sample_rate,
 			 	 	 	 	 	 	   audio_channel_layout,
-			 	 	 	 	 	 	   AV_SAMPLE_FMT_S16,
+			 	 	 	 	 	 	   device_audio_sample_fmt,
 			 	 	 	 	 	 	   audio_sample_rate,
 			 	 	 	 	 	 	   0, // logging level offset
-			 	 	 	 	 	 	   NULL);// parent logging context
+			 	 	 	 	 	 	   0);// parent logging context
 
 	if(!audio_convert)
 		LOGE("could not allocate SwrContext");
+
+	int error = 0;
+	error = swr_init(audio_convert);
+	if(error < 0)
+		LOGE("swr_init failed. Error: %d", error);
 
 }
 
 void freeRecordingStructs(){
 	swr_free(&audio_convert);
+}
+
+////////////////////////////////////////////
+//     audio output buffer getter         //
+////////////////////////////////////////////
+
+static double get(uint8_t *a[], int ch, int index, int ch_count, enum AVSampleFormat f){
+    //LOGI("get. ch %d index %d ch_count %d",ch,index,ch_count);
+	const uint8_t *p;
+    if(av_sample_fmt_is_planar(f)){
+        f= av_get_alt_sample_fmt(f, 0);
+        p= a[ch];
+    }else{
+        p= a[0];
+        index= ch + index*ch_count;
+    }
+
+    switch(f){
+    case AV_SAMPLE_FMT_U8 : return ((const uint8_t*)p)[index]/127.0-1.0;
+    case AV_SAMPLE_FMT_S16: return ((const int16_t*)p)[index]/32767.0;
+    case AV_SAMPLE_FMT_S32: return ((const int32_t*)p)[index]/2147483647.0;
+    case AV_SAMPLE_FMT_FLT: return ((const float  *)p)[index];
+    case AV_SAMPLE_FMT_DBL: return ((const double *)p)[index];
+    default:
+    	LOGE("get no avsamplefmt supplied");
+    	return 0;
+    }
+}
+
+////////////////////////////////////////////
+//      xxx[] to bytee[]  conversion      //
+////////////////////////////////////////////
+
+// From libswresample/swresample-test.c
+static void setup_array(uint8_t *out[SWR_CH_MAX], uint8_t *in, enum AVSampleFormat format, int samples){
+    if(av_sample_fmt_is_planar(format)){
+        int i;
+        int plane_size= av_get_bytes_per_sample(format&0xFF)*samples;
+        format&=0xFF;
+        for(i=0; i<SWR_CH_MAX; i++){
+            out[i]= in + i*plane_size;
+        }
+    }else{
+        out[0]= in;
+    }
 }
 
 
@@ -662,6 +720,7 @@ int Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_interna
 	safe_to_encode = 1;
 
 	//testAudioCodec();
+	audio_channel_count = av_get_channel_layout_nb_channels(audio_channel_layout);
 
 	allocRecordingStructs(); // alloc structs that need only be done once per recording
 
@@ -729,7 +788,6 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 	}
 	jshort *native_audio_frame_data = (*env)->GetShortArrayElements(env, audio_data, NULL);
 
-
 	if((int)audio_length % audio_input_frame_size != 0){
 		LOGE("Audio length: %d, audio_input_frame_size %d", (int)audio_length, audio_input_frame_size);
 		exit(1);
@@ -748,34 +806,54 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 			LOGE("audio_convert not allocated");
 			exit(-1);
 		}
-		uint8_t *converted_native_audio_frame_data = malloc(sizeof(short) * audio_length);
-		LOGI("malloc converted_native_audio_frame_data");
+		// native_audio_frame_data is a ptr to a short[] of audio samples
+		//uint8_t *formatted_native_audio_frame_data[SWR_CH_MAX];
+		//uint8_t *formatted_native_audio_frame_data = malloc(sizeof(short) * audio_length); // converted from short[] to byte[]
+		//uint8_t *converted_native_audio_frame_data = malloc(sizeof(float) * audio_length); // converted from FMT_S16 to FMT_FLT
+
+		// ain, array_in, in_sample_fmt, SAMPLES
+		// uint8_t *ain[SWR_CH_MAX];
+		// uint8_t array_in[SAMPLES*8*8];
+		/*
+		uint8_t array_out[2 * audio_length];
+
+		setup_array(formatted_native_audio_frame_data, (uint8_t *)native_audio_frame_data, device_audio_sample_fmt, audio_length);
+		setup_array(converted_native_audio_frame_data, array_out, codec_audio_sample_fmt, audio_length);
+
+		//setup_array(uint8_t *out[SWR_CH_MAX], uint8_t *in, enum AVSampleFormat format, int samples)
+		LOGI("swr_convert begin"); // <--- last log before crash
 		int swr_convert_err = 0;
-		swr_convert_err = swr_convert(audio_convert,			// allocated Swr context, with parameters set
-					&converted_native_audio_frame_data,			// output buffers, only the first one need be set in case of packed audio
-					2*audio_length / num_audio_channels,  		// amount of space available for output in samples per channel
-					(const uint8_t**)&native_audio_frame_data,	// input buffers, only the first one need to be set in case of packed audio
-					2*audio_length / num_audio_channels);  		// number of input samples available in one channel
+		swr_convert_err = swr_convert(audio_convert,						// allocated Swr context, with parameters set
+					converted_native_audio_frame_data,						// output buffers, only the first one need be set in case of packed audio
+					audio_length / num_audio_channels,  					// amount of space available for output in samples per channel
+					(const uint8_t**)formatted_native_audio_frame_data,		// input buffers, only the first one need to be set in case of packed audio
+					audio_length / num_audio_channels);  					// number of input samples available in one channel
 		LOGI("swr_convert finished");
 		if(swr_convert_err < 0)
 			LOGE("swr_convert returned error %d", swr_convert_err);
-
+	*/
 		int x = 0;
 		for(x=0;x<num_frames;x++){ // for each audio frame
 			int audio_sample_count = 0;
 			//LOG("Audio frame size: %d", audio_input_frame_size);
-
+			//TODO: conver samples to float based
+			LOGI("pre audio sample copying");
 			for(y=0;y<audio_input_frame_size;y++){ // copy each sample
-				samples[y] = (int)(native_audio_frame_data[0]);
+				samples[y] = (native_audio_frame_data[0] / 32767.0);
 				native_audio_frame_data++;
-				//samples[y] = (int)(converted_native_audio_frame_data[0]);
-				//converted_native_audio_frame_data++;
+				//samples[y] = (float)converted_native_audio_frame_data[0];
+				//samples[y] = (float)get(converted_native_audio_frame_data,0,y,audio_channel_count,codec_audio_sample_fmt);
+				//LOGI("got audio frame %d",y);
+				//converted_native_audio_frame_data[0]++;
 				audio_sample_count++;
 			}
+			LOGI("pre write_audio_frame");
 			write_audio_frame(oc, audio_st);
+			LOGI("post write audio frame");
 		}
+		//free(formatted_native_audio_frame_data);
 		//free(converted_native_audio_frame_data);
-		//LOGI("ENCODE_AUDIO-1");
+		LOGI("free converted_native...");
 	}
 
 	(*env)->ReleaseShortArrayElements(env, audio_data, native_audio_frame_data, 0);
