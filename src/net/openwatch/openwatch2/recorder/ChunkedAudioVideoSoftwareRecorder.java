@@ -115,9 +115,9 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				video_frame_date = new Date();
 				audio_samples = audio_recorder.readAudioFrames();
 				int read_distance = audio_recorder.read_distance;
-				Log.d("PROCESSAVDATA-0","read_distance: " + String.valueOf(read_distance));
+				//Log.d("PROCESSAVDATA-0","read_distance: " + String.valueOf(read_distance));
 				ffencoder.processAVData(video_frame_data,  video_frame_date.getTime(), audio_samples, read_distance);
-				Log.d("PROCESSAVDATA-1","DONE");
+				//Log.d("PROCESSAVDATA-1","DONE");
 				if(!got_first_video_frame){
 					got_first_video_frame = true;
 					audio_recorder.startRecording(); // start polling audio immediatley after video frame written

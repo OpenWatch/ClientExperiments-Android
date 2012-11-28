@@ -108,8 +108,10 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
     c->gop_size      = 12; /* emit one intra frame every twelve frames at most */
     c->pix_fmt       = STREAM_PIX_FMT;
 
-    //if(codec_id == CODEC_ID_H264)
-     //       av_opt_set(c->priv_data, "preset", "fast", 0);
+    if(codec_id == CODEC_ID_H264){
+    	av_opt_set(c->priv_data, "preset", "ultrafast", 0);
+    	av_opt_set_double(c->priv_data, "crf", 18.0, 0);
+    }
 
     if (c->codec_id == CODEC_ID_MPEG2VIDEO) {
         /* just for testing, we also add B frames */
@@ -124,7 +126,7 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
     /* Some formats want stream headers to be separate. */
     if (oc->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
-    LOGI("end add_video_st fps: %d device_frame_rate: %d", st->codec->time_base.den, device_frame_rate);
+    //LOGI("end add_video_st fps: %d device_frame_rate: %d", st->codec->time_base.den, device_frame_rate);
     return st;
 }
 
@@ -193,7 +195,7 @@ static void open_video(AVFormatContext *oc, AVStream *st)
         fprintf(stderr, "Could not allocate picture\n");
         exit(1);
     }
-    LOGI("alloc_picture");
+    //LOGI("alloc_picture");
 
     /* If the output format is not YUV420P, then a temporary YUV420P
      * picture is needed too. It is then converted to the required
@@ -207,7 +209,7 @@ static void open_video(AVFormatContext *oc, AVStream *st)
             exit(1);
         }
     }
-    LOGI("open_video success");
+    //LOGI("open_video success");
 }
 
 static void write_video_frame(AVFormatContext *oc, AVStream *st)
@@ -278,8 +280,8 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 			double video_gap = (current_video_frame_timestamp - first_video_frame_timestamp) / ((double) 1000); // seconds
 			double time_base = ((double) st->codec->time_base.num) / (st->codec->time_base.den);
 			// %ld - long,  %d - int, %f double/float
-			LOGI("VIDEO STREAM fps: %d / %d = %f sec per frame", st->codec->time_base.num, st->codec->time_base.den, time_base);
-			LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f PTS %"  PRId64, video_gap, time_base, (int)(video_gap / time_base));
+			//LOGI("VIDEO STREAM fps: %d / %d = %f sec per frame", st->codec->time_base.num, st->codec->time_base.den, time_base);
+			//LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f PTS %"  PRId64, video_gap, time_base, (int)(video_gap / time_base));
 
 			int proposed_pts = (int)(video_gap / time_base);
 			if(last_pts != -1 && proposed_pts == last_pts){
@@ -345,7 +347,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
     st->id = 1;
 
     c = st->codec;
-    LOGI("strict_std_compliance: %d FF_COM_EXP: %d", c->strict_std_compliance, FF_COMPLIANCE_EXPERIMENTAL);
+    //LOGI("strict_std_compliance: %d FF_COM_EXP: %d", c->strict_std_compliance, FF_COMPLIANCE_EXPERIMENTAL);
     c->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL; // for native aac support
     /* put sample parameters */
     //c->sample_fmt  = AV_SAMPLE_FMT_FLT;
@@ -360,6 +362,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
 
     //TESTING
     /* open the codec */
+    /*
     char error_buffer[90];
     char *error_buffer_ptr = error_buffer;
     int error = avcodec_open2(c, codec, NULL);
@@ -375,7 +378,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id)
 		//fprintf(stderr, "could not open codec\n");
 		exit(1);
 		}
-	}
+	}*/
     //TESTING
 
     return st;
@@ -441,11 +444,12 @@ static void write_audio_frame(AVFormatContext *oc, AVStream *st)
 
     pkt.stream_index = st->index;
 
-    LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration);
+    //LOGI("AUDIO_PTS: %" PRId64 " AUDIO_DTS %" PRId64 " duration %d" ,pkt.pts, pkt.dts,pkt.duration);
 
     /* Write the compressed frame to the media file. */
     if (av_interleaved_write_frame(oc, &pkt) != 0) {
-        fprintf(stderr, "Error while writing audio frame\n");
+        LOGE("error writing audio frame!");
+    	//fprintf(stderr, "Error while writing audio frame\n");
         exit(1);
     }
 }
@@ -487,7 +491,7 @@ int initializeAVFormatContext(){
 		exit(1);
 	}
 
-	LOGI("avformat_alloc_output_context2");
+	//LOGI("avformat_alloc_output_context2");
 	fmt = oc->oformat;
 
 	// Set AVOutputFormat video/audio codec
@@ -504,7 +508,7 @@ int initializeAVFormatContext(){
 	if (fmt->audio_codec != CODEC_ID_NONE) {
 		audio_st = add_audio_stream(oc, fmt->audio_codec);
 	}
-	LOGI("add_audio_stream / add_video_stream");
+	//LOGI("add_audio_stream / add_video_stream");
 	/* Now that all the parameters are set, we can open the audio and
 	 * video codecs and allocate the necessary encode buffers. */
 	if (video_st)
@@ -514,17 +518,7 @@ int initializeAVFormatContext(){
 
 	av_dump_format(oc, 0, native_output_file1, 1);
 
-	// TESTING
-	FILE *f1 = fopen(native_output_file1, "wb");
-	if (!f1) {
-		//fprintf(stderr, "could not open %s\n", filename);
-		LOGE("could not open %s", native_output_file1);
-		exit(1);
-	}
-	LOGI("Could open %s", native_output_file1);
-	fclose(f1);
-
-	LOGI("open audio / video");
+	//LOGI("open audio / video");
 	/* open the output file, if needed */
 	if (!(fmt->flags & AVFMT_NOFILE)) {
 		char *error_buffer_ptr;
@@ -542,7 +536,7 @@ int initializeAVFormatContext(){
 	/* Write the stream header, if any. */
 	avformat_write_header(oc, NULL);
 	//LOGI("avformat_write_header");
-	LOGI("end initializeAVFC: audio_input_frame_size: %d fps: %d", audio_input_frame_size, video_st->codec->time_base.den);
+	//LOGI("end initializeAVFC: audio_input_frame_size: %d fps: %d", audio_input_frame_size, video_st->codec->time_base.den);
 	return audio_input_frame_size;
 }
 
@@ -681,7 +675,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 
 	safe_to_encode = 0;
 
-	LOGI("processAVData");
+	//LOGI("processAVData");
 
 	AVCodecContext *c;
 
@@ -689,7 +683,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 	jbyte *native_video_frame_data = (*env)->GetByteArrayElements(env, video_frame_data, NULL);
 
 
-	LOGI("ENCODE-VIDEO-0");
+	//LOGI("ENCODE-VIDEO-0");
 
 	// If this is the first frame, set current and last frame ts
 	// equal to the current frame. Else the new last ts = old current ts
@@ -720,12 +714,12 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		}
 	}
 
-	LOGI("pre write video frame");
+	//LOGI("pre write video frame");
 	/* write interleaved video frames */
 	write_video_frame(oc, video_st);
 
 
-	LOGI("ENCODE-VIDEO-1");
+	//LOGI("ENCODE-VIDEO-1");
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
 
 	// AUDIO
@@ -744,7 +738,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 	int num_frames = (int) audio_length / audio_input_frame_size;
 
 	if(audio_st){
-		LOGI("ENCODE_AUDIO-0");
+		//LOGI("ENCODE_AUDIO-0");
 		// Convert audio samples to proper format
 		//jshort (*converted_native_audio_frame_data)[audio_length];
 		// c short is 16 bits
@@ -782,7 +776,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 			write_audio_frame(oc, audio_st);
 		}
 		//free(converted_native_audio_frame_data);
-		LOGI("ENCODE_AUDIO-1");
+		//LOGI("ENCODE_AUDIO-1");
 	}
 
 	(*env)->ReleaseShortArrayElements(env, audio_data, native_audio_frame_data, 0);
