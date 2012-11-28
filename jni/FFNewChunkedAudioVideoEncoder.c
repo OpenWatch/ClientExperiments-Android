@@ -34,6 +34,7 @@ int device_frame_rate = 15;
 //int sample_fmt = AV_SAMPLE_FMT_FLT; // required for native aac
 int sample_fmt = AV_SAMPLE_FMT_S16;
 int VIDEO_CODEC_ID = CODEC_ID_H264;
+//int AUDIO_CODEC_ID = CODEC_ID_AAC;
 int AUDIO_CODEC_ID = CODEC_ID_MP2;
 
 // Audio Parameters
@@ -42,7 +43,7 @@ static int audio_input_frame_size;
 int num_audio_channels = 1;
 int audio_sample_rate = 44100;
 SwrContext *audio_convert;
-int audio_channel_layout = AV_CH_LAYOUT_MONO;
+int64_t audio_channel_layout = AV_CH_LAYOUT_MONO;
 
 // Video Paramteres
 static AVFrame *picture, *tmp_picture;
@@ -83,9 +84,13 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
         exit(1);
     }
 
+
+
     c = st->codec;
 
     avcodec_get_context_defaults3(c, codec);
+
+    LOGI("start add_video_st fps: %d device_frame_rate: %d", c->time_base.den, device_frame_rate);
 
     c->codec_id = codec_id;
 
@@ -119,7 +124,7 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id)
     /* Some formats want stream headers to be separate. */
     if (oc->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
+    LOGI("end add_video_st fps: %d device_frame_rate: %d", st->codec->time_base.den, device_frame_rate);
     return st;
 }
 
@@ -215,6 +220,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
 
 	if (c->pix_fmt != PIX_FMT_YUV420P) {
+		LOGE("write_video pix_fmt not YUV420P");
 		/* as we only generate a YUV420P picture, we must convert it
 		 * to the codec pixel format if needed
 		 * DELETE THIS SECTION */
@@ -237,6 +243,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
     }
 
     if (oc->oformat->flags & AVFMT_RAWPICTURE) {
+    	LOGE("write_video AVFMT_RAWPICTURE detected");
         /* Raw video case - the API will change slightly in the near
          * future for that. */
         AVPacket pkt;
@@ -269,8 +276,9 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
             // Determine video pts by ms time difference since last frame + recorded frame count
 			double video_gap = (current_video_frame_timestamp - first_video_frame_timestamp) / ((double) 1000); // seconds
-			double time_base = ((double) st->time_base.num) / (st->time_base.den);
+			double time_base = ((double) st->codec->time_base.num) / (st->codec->time_base.den);
 			// %ld - long,  %d - int, %f double/float
+			LOGI("VIDEO STREAM fps: %d / %d = %f sec per frame", st->codec->time_base.num, st->codec->time_base.den, time_base);
 			LOGI("VIDEO_FRAME_GAP_S: %f TIME_BASE: %f PTS %"  PRId64, video_gap, time_base, (int)(video_gap / time_base));
 
 			int proposed_pts = (int)(video_gap / time_base);
@@ -534,9 +542,7 @@ int initializeAVFormatContext(){
 	/* Write the stream header, if any. */
 	avformat_write_header(oc, NULL);
 	//LOGI("avformat_write_header");
-	LOGI("sanity check-0");
-	LOGI("audio_input_frame_size: %d", audio_input_frame_size); // not printed
-	LOGI("sanity check-1");
+	LOGI("end initializeAVFC: audio_input_frame_size: %d fps: %d", audio_input_frame_size, video_st->codec->time_base.den);
 	return audio_input_frame_size;
 }
 
@@ -574,7 +580,7 @@ void finalizeAVFormatContext(){
 ////////////////////////////////////////////
 
 void allocRecordingStructs(){
-	/*
+/*
 	audio_convert = swr_alloc_set_opts(audio_convert,
 			 	 	 	 	 	 	   audio_channel_layout,
 			 	 	 	 	 	 	   AV_SAMPLE_FMT_FLT,
@@ -582,13 +588,16 @@ void allocRecordingStructs(){
 			 	 	 	 	 	 	   audio_channel_layout,
 			 	 	 	 	 	 	   AV_SAMPLE_FMT_S16,
 			 	 	 	 	 	 	   audio_sample_rate,
-			 	 	 	 	 	 	   NULL, // logging level offset
+			 	 	 	 	 	 	   0, // logging level offset
 			 	 	 	 	 	 	   NULL);// parent logging context
-			 	 	 	 	 	 	   */
+
+	if(!audio_convert)
+		LOGE("could not allocate SwrContext");
+*/
 }
 
 void freeRecordingStructs(){
-	//swr_free(audio_convert);
+	//swr_free(&audio_convert);
 }
 
 
@@ -655,7 +664,7 @@ int Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_interna
 	output_height = (int) height;
 	output_width = (int) width;
 
-	LOGI("1. internalInitializeEncoder()");
+	LOGI("1. internalInitializeEncoder(). requested fps: %d", fps);
 	safe_to_encode = 1;
 
 	//testAudioCodec();
@@ -738,18 +747,26 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		LOGI("ENCODE_AUDIO-0");
 		// Convert audio samples to proper format
 		//jshort (*converted_native_audio_frame_data)[audio_length];
+		// c short is 16 bits
+		// swr_convert expects uint8_t (bits)
 		/*
-		short *converted_native_audio_frame_data = malloc(sizeof(short) * audio_length);
+		if(!audio_convert){
+			LOGE("audio_convert not allocated");
+			exit(-1);
+		}
+		uint8_t *converted_native_audio_frame_data = malloc(sizeof(short) * audio_length);
+		LOGI("malloc converted_native_audio_frame_data");
 		int swr_convert_err = 0;
 		swr_convert_err = swr_convert(audio_convert,		// allocated Swr context, with parameters set
-					converted_native_audio_frame_data,		// output buffers, only the first one need be set in case of packed audio
-					audio_length / num_audio_channels,  	// amount of space available for output in samples per channel
-					native_audio_frame_data,				// input buffers, only the first one need to be set in case of packed audio
-					audio_length / num_audio_channels);  	// number of input samples available in one channel
+					&converted_native_audio_frame_data,		// output buffers, only the first one need be set in case of packed audio
+					2*audio_length / num_audio_channels,  	// amount of space available for output in samples per channel
+					(const uint8_t**)&native_audio_frame_data,				// input buffers, only the first one need to be set in case of packed audio
+					2*audio_length / num_audio_channels);  	// number of input samples available in one channel
+		LOGI("swr_convert finished");
 		if(swr_convert_err < 0)
 			LOGE("swr_convert returned error %d", swr_convert_err);
-		*/
 
+		 */
 		int x = 0;
 		for(x=0;x<num_frames;x++){ // for each audio frame
 			int audio_sample_count = 0;
