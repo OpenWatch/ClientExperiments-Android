@@ -34,8 +34,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	private String output_filename_base = "";
 
 	private final String file_ext = ".mp4";
-	private final int output_width = 640;
-	private final int output_height = 480;
+	private final int output_width = 320;
+	private final int output_height = 240;
 	private final int fps = 24;
 
 	private int chunk = 1; // video chunks in this recording
