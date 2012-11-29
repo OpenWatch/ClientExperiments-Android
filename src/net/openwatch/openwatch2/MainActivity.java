@@ -7,11 +7,14 @@ import net.openwatch.openwatch2.camera.CameraPreview;
 import net.openwatch.openwatch2.recorder.ChunkedAudioVideoSoftwareRecorder;
 import net.openwatch.openwatch2.video.FFVideoEncoder;
 import net.openwatch.openwatch2.video.VideoSoftwareRecorder;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.annotation.SuppressLint;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.util.Log;
 import android.view.Menu;
@@ -29,6 +32,8 @@ public class MainActivity extends Activity {
 	private CameraPreview mPreview;
 	
 	private static final String OUTPUT_DIR = "/sdcard/ffmpeg_testing/";
+	
+	private ActionBar action_bar;
 
 	private ChunkedAudioVideoSoftwareRecorder av_recorder = new ChunkedAudioVideoSoftwareRecorder();
 
@@ -38,15 +43,19 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		if (Build.VERSION.SDK_INT >= 11) {
-			this.getActionBar().setDisplayShowTitleEnabled(false);
-			this.getActionBar().setTitle("OW Tech Demo");
+			action_bar = this.getActionBar();
+			action_bar.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+			action_bar.setDisplayShowTitleEnabled(false);
+			action_bar.setDisplayShowTitleEnabled(true);
+			action_bar.setTitle("");
+			//this.getActionBar().setTitle("OW Tech Demo");
 		}
 
 		// Create our Preview view and set it as the content of our activity.
 		//mPreview = new CameraPreview(this, mCamera);
 
-		Button test_btn = (Button) findViewById(R.id.test_btn);
-		test_btn.setOnClickListener(new OnClickListener() {
+		SurfaceView camera_preview = (SurfaceView) findViewById(R.id.camera_surface_view);
+		camera_preview.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
@@ -62,7 +71,12 @@ public class MainActivity extends Activity {
 				
 				if (av_recorder.is_recording) {
 					av_recorder.stopRecording();
-					((Button) v).setText("Start Recording");
+					action_bar.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+					action_bar.setDisplayShowTitleEnabled(false);
+					action_bar.setDisplayShowTitleEnabled(true);
+					action_bar.setTitle("");
+					Log.i("ACTION_BAR","WHITE");
+					
 				} else {
 					// Start camera preview
 					//FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
@@ -78,12 +92,18 @@ public class MainActivity extends Activity {
 						av_recorder.startRecording(mCamera,
 												  (SurfaceView) MainActivity.this.findViewById(R.id.camera_surface_view),
 												  output_filename);
+						
+						action_bar.setBackgroundDrawable(new ColorDrawable(Color.RED));
+						action_bar.setDisplayShowTitleEnabled(false);
+						action_bar.setDisplayShowTitleEnabled(true);
+						action_bar.setTitle("RECORDING");
+						Log.i("ACTION_BAR","RED");
+						
 					} catch (Exception e) {
 						Log.e("Recorder init error", "Could not init av_recorder");
 						e.printStackTrace();
 					}
 
-					((Button) v).setText("Stop Recording");
 				}
 				
 			}

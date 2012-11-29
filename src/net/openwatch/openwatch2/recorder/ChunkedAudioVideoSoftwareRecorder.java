@@ -122,26 +122,24 @@ public class ChunkedAudioVideoSoftwareRecorder {
 			@Override
 			public void onPreviewFrame(byte[] video_frame_data, Camera camera) {
 				Log.d("FRAME", "video frame polled");
-				frame_count++;
-				// while(!audio_recorder.recorderTask.audio_read_data_ready)
-				// continue; // make sure we aren't writing to audio_read_data
-				// audio_recorder.recorderTask.audio_read_data
 
-				video_frame_date = new Date();
-				
 				if (!got_first_video_frame) {
+					// Ensure a video frame worth of audio is prepared
+					// before accepting first frame
+					if(audio_recorder.recorderTask.buffer_write_index < (1.0/fps) * audio_recorder.SAMPLE_RATE){
+						//Log.i("FRAME","Audio not ready. write index: " + String.valueOf(audio_recorder.recorderTask.buffer_write_index) + " required: " + String.valueOf((1.0/fps) * audio_recorder.SAMPLE_RATE));
+						return;
+					}
+					
 					got_first_video_frame = true;
-					// Set the audio buffer read index to sync with time of first video frame
-					// TEST - there seems to be about 14 audio samples expected at the moment the first video frame is ready
-					//audio_recorder.recorderTask.buffer_read_index = audio_recorder.recorderTask.buffer_write_index;
-					//audio_recorder.startRecording(); // start polling audio
-														// immediatley after
-														// video frame written
 					start_time = new Date().getTime();
 				}else {
 					audio_samples = audio_recorder.readAudioFrames();
 					audio_data_length = audio_recorder.read_distance;
 				}
+				
+				frame_count++;
+				video_frame_date = new Date();
 				
 				ffencoder.processAVData(video_frame_data,
 						video_frame_date.getTime(), audio_samples,

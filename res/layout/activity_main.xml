@@ -6,7 +6,7 @@
     <SurfaceView
         android:id="@+id/camera_surface_view"
         android:layout_width="fill_parent"
-        android:layout_height="150dp"
+        android:layout_height="fill_parent"
         android:gravity="center" />
 
     <FrameLayout
@@ -14,7 +14,7 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_weight="1" />
-
+<!--  
     <Button
         android:id="@+id/test_btn"
         android:layout_width="wrap_content"
@@ -24,41 +24,6 @@
         android:text="Start Recording"
         android:textSize="25dp"
         tools:context=".MainActivity" />
-
-    <!--
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/camera_surface_view"
-        android:layout_centerInParent="true"
-        android:paddingTop="20dp"
-        android:text="Stream Audio"
-        android:textSize="25dp"
-        android:visibility="gone"
-        tools:context=".MainActivity" />
-    
-
-    <Button
-        android:id="@+id/record_hw_video_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/camera_surface_view"
-        android:layout_centerInParent="true"
-        android:layout_marginTop="20dp"
-        android:text="Start HW Video Recording"
-        android:textSize="25dp"
-        tools:context=".MainActivity" />
-    
-    <Button
-        android:id="@+id/record_sw_video_btn"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/record_hw_video_btn"
-        android:layout_centerInParent="true"
-        android:layout_marginTop="20dp"
-        android:text="Start SW Video Recording"
-        android:textSize="25dp"
-        tools:context=".MainActivity" />
-    -->
+-->
 
 </RelativeLayout>
