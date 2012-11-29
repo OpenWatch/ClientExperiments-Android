@@ -52,6 +52,16 @@ public class ChunkedAudioVideoSoftwareRecorder {
 
 	private AudioSoftwarePoller audio_recorder;
 	private static short[] audio_samples;
+	
+	private void initializeRecorder(){
+		chunk = 1;
+		int frame_count = 0;
+		int audio_data_length = 0;
+		audio_samples = null;
+		chunk_frame_count = 0;
+		got_first_video_frame = false;
+		
+	}
 
 	@SuppressLint("NewApi")
 	public void startRecording(Camera camera, SurfaceView camera_surface_view,
@@ -61,7 +71,8 @@ public class ChunkedAudioVideoSoftwareRecorder {
 
 		// Ready FFEncoder
 		ffencoder = new FFNewChunkedAudioVideoEncoder();
-		chunk = 1;
+		// Ready this class's recording parameters
+		initializeRecorder();
 
 		// num_samples is the # of audio samples / frame
 		int num_samples = ffencoder.initializeEncoder(output_filename_base

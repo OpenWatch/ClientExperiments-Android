@@ -42,9 +42,6 @@ public class MainActivity extends Activity {
 			this.getActionBar().setTitle("OW Tech Demo");
 		}
 
-		// Create an instance of Camera
-		mCamera = getCameraInstance();
-
 		// Create our Preview view and set it as the content of our activity.
 		//mPreview = new CameraPreview(this, mCamera);
 
@@ -76,6 +73,8 @@ public class MainActivity extends Activity {
 						output_dir_file.mkdir();
 					output_filename = OUTPUT_DIR + String.valueOf(new Date().getTime());
 					try {
+						// Create an instance of Camera
+						mCamera = getCameraInstance();
 						av_recorder.startRecording(mCamera,
 												  (SurfaceView) MainActivity.this.findViewById(R.id.camera_surface_view),
 												  output_filename);

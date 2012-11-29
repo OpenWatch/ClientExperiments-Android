@@ -133,8 +133,8 @@ public class AudioSoftwarePoller {
 			if(buffer_size < min_buffer_size)
 				buffer_size = ((min_buffer_size / samples_per_frame) + 1) * samples_per_frame * 2;
 			
-			Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples, min: " + String.valueOf(min_buffer_size));
-			Log.i(TAG,"audio frame size: " + String.valueOf(samples_per_frame));
+			//Log.i(TAG,"audio buffer size: " + String.valueOf(buffer_size) + " samples, min: " + String.valueOf(min_buffer_size));
+			//Log.i(TAG,"audio frame size: " + String.valueOf(samples_per_frame));
 			notification_period = samples_per_frame;
 			data_buffer = new short[buffer_size]; // filled directly by hardware
 			
@@ -185,7 +185,7 @@ public class AudioSoftwarePoller {
 				//Log.i("AUDIO_REC","recording");
 				//Log.i("AUDIO_REC", "recording on thread: " + Thread.currentThread().getName());
 	            audio_recorder.read(data_buffer, buffer_write_index, samples_per_frame);
-	            Log.i("AUDIO_FILL_BUFFER",String.valueOf(buffer_write_index) + " - " + String.valueOf(buffer_write_index + samples_per_frame-1));
+	            //Log.i("AUDIO_FILL_BUFFER",String.valueOf(buffer_write_index) + " - " + String.valueOf(buffer_write_index + samples_per_frame-1));
 	            buffer_write_index = (buffer_write_index + samples_per_frame) % buffer_size;
 	            total_frames_written ++;
 	            //ffencoder.encodeAudioFrame(audio_read_data_buffer);
