@@ -48,6 +48,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 	int frame_count = 0;
 
 	private Date video_frame_date;
+	int audio_data_length = 0 ;
 
 	private AudioSoftwarePoller audio_recorder;
 	private static short[] audio_samples;
@@ -76,8 +77,7 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		audio_recorder.recorderTask.samples_per_frame = num_samples;
 		Log.i("AUDIO_FRAME_SIZE",
 				"audio frame size: " + String.valueOf(num_samples));
-		// don't start polling audio until the first video frame
-		// audio_recorder.startRecording();
+		audio_recorder.startRecording();
 
 		this.camera = camera;
 		this.output_filename_base = output_filename_base;
@@ -117,24 +117,25 @@ public class ChunkedAudioVideoSoftwareRecorder {
 				// audio_recorder.recorderTask.audio_read_data
 
 				video_frame_date = new Date();
-				audio_samples = audio_recorder.readAudioFrames();
-				int read_distance = audio_recorder.read_distance;
-				// Log.d("PROCESSAVDATA-0","read_distance: " +
-				// String.valueOf(read_distance));
-				ffencoder.processAVData(video_frame_data,
-						video_frame_date.getTime(), audio_samples,
-						read_distance);
-				// Log.d("PROCESSAVDATA-1","DONE");
+				
 				if (!got_first_video_frame) {
 					got_first_video_frame = true;
-					audio_recorder.startRecording(); // start polling audio
+					// Set the audio buffer read index to sync with time of first video frame
+					// TEST - there seems to be about 14 audio samples expected at the moment the first video frame is ready
+					//audio_recorder.recorderTask.buffer_read_index = audio_recorder.recorderTask.buffer_write_index;
+					//audio_recorder.startRecording(); // start polling audio
 														// immediatley after
 														// video frame written
 					start_time = new Date().getTime();
+				}else {
+					audio_samples = audio_recorder.readAudioFrames();
+					audio_data_length = audio_recorder.read_distance;
 				}
-				// ffencoder.encodeVideoFrame(video_frame_data,
-				// video_frame_date.getTime(), audio_samples, real_dist);
-				// audio_recorder.recorderTask.audio_read_data
+				
+				ffencoder.processAVData(video_frame_data,
+						video_frame_date.getTime(), audio_samples,
+						audio_data_length);
+				// Log.d("PROCESSAVDATA-1","DONE");
 				chunk_frame_count++;
 				if (chunk_frame_count >= chunk_frame_max) {
 					Log.d("FRAME", "chunking video");

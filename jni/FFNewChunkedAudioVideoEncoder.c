@@ -263,11 +263,13 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
 
         ret = av_interleaved_write_frame(oc, &pkt);
     } else {
+    	LOGI("video frame is YUV420P");
         /* encode the image */
         out_size = avcodec_encode_video(c, video_outbuf,
                                         video_outbuf_size, picture);
         /* If size is zero, it means the image was buffered. */
         if (out_size > 0) {
+        	LOGI("out_size > 0");
             AVPacket pkt;
             av_init_packet(&pkt);
 
@@ -298,8 +300,10 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
             LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             /* Write the compressed frame to the media file. */
             ret = av_interleaved_write_frame(oc, &pkt);
-            LOGI("av_interleaved_write_frame success");
+            //LOGI("av_interleaved_write_frame success");
+            video_frame_count++;
         } else {
+        	LOGI("out_size < 0: %d", out_size);
             ret = 0;
         }
     }
@@ -308,7 +312,7 @@ static void write_video_frame(AVFormatContext *oc, AVStream *st)
     	//fprintf(stderr, "Error while writing video frame\n");
         exit(1);
     }
-    video_frame_count++;
+
 }
 
 static void close_video(AVFormatContext *oc, AVStream *st)
