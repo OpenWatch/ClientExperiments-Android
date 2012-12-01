@@ -75,10 +75,10 @@ public class ChunkedAudioVideoSoftwareRecorder {
 		initializeRecorder();
 
 		// num_samples is the # of audio samples / frame
-		int num_samples = ffencoder.initializeEncoder(output_filename_base
-				+ "_" + String.valueOf(chunk) + file_ext, output_filename_base
-				+ "_" + String.valueOf(chunk + 1) + file_ext, output_width,
-				output_height, fps);
+		int num_samples = ffencoder.initializeEncoder(output_filename_base + "_HQ" + file_ext,
+				output_filename_base+ "_" + String.valueOf(chunk) + file_ext, 
+				output_filename_base+ "_" + String.valueOf(chunk + 1) + file_ext, 
+				output_width, output_height, fps);
 
 		chunk += 2;
 
