@@ -60,11 +60,13 @@ static uint8_t *video_outbuf;
 int video_outbuf_freed = 0; // avoid doubly closing video_outbuf
 static int sws_flags = SWS_BICUBIC;
 static int video_outbuf_size;
-long first_video_frame_timestamp;
+long first_video_frame_timestamp_hq;
+long first_video_frame_timestamp_lq;
 long current_video_frame_timestamp;
 int last_pts_hq; // last frame's PTS. Ensure current frame pts > last_pts
 int last_pts_lq;
-int video_frame_count;
+int video_frame_count_hq;
+int video_frame_count_lq;
 float video_crf_hq = 18;
 float video_crf_lq = 24;
 
@@ -244,8 +246,9 @@ static void open_video(AVFormatContext *oc, AVStream *st, AVFrame **out_picture)
  *
  * NOTE: assumes the LQ and HQ stream PIX_FMT and time_base are equal
  */
-static void write_video_frame(AVFormatContext *oc,  AVStream *st, AVFrame *picture, int *out_last_pts)
+static void write_video_frame(AVFormatContext *oc,  AVStream *st, AVFrame *picture, int *out_last_pts, int *out_video_frame_count, long first_video_frame_timestamp)
 {
+	int video_frame_count = *out_video_frame_count;
 	int last_pts = *out_last_pts;
 	//LOGI("write_video_frame get last_pts: %d", last_pts);
 	//LOGI("write_video_frame sanity last_pts + 1: %d", last_pts + 1);
@@ -346,6 +349,7 @@ static void write_video_frame(AVFormatContext *oc,  AVStream *st, AVFrame *pictu
 
             //LOGI("av_interleaved_write_frame success");
             video_frame_count++;
+            *out_video_frame_count = video_frame_count;
         } else {
         	LOGI("out_size < 0: %d", out_size);
             ret = 0;
@@ -532,13 +536,12 @@ static void close_audio(AVFormatContext *oc, AVStream *st, int16_t *samples)
  * Called on encoder initialize and when beginning
  * each new video chunk
  */
-int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, AVStream **out_video_st, AVFrame **out_picture, int video_width, int video_height, float video_crf, int *out_last_pts, AVStream **out_audio_st, int16_t **out_samples, int audio_bitrate){
+int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, AVStream **out_video_st, AVFrame **out_picture, int video_width, int video_height, float video_crf, int *out_last_pts, int *out_video_frame_count, AVStream **out_audio_st, int16_t **out_samples, int audio_bitrate){
 	AVFormatContext *oc;
 	AVStream *video_st;
 	AVStream *audio_st;
 	AVFrame *picture;
 	int16_t *samples;
-	video_frame_count = 0;
 
 	// TODO: Can we do this only once?
 	/* Initialize libavcodec, and register all codecs and formats. */
@@ -623,21 +626,22 @@ int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, 
 	*out_audio_st = audio_st;
 	*out_picture = picture;
 	*out_samples = samples;
-	*out_last_pts = -1; // reset PTS variable
+	*out_last_pts = -1;
+	*out_video_frame_count = 0;
 
 	return audio_input_frame_size;
 }
 
 int initializeLQAVFormatContext(jbyte* native_output_file){
 	//LOGI("initializeLQAVF with file: %s", native_output_file);
-	int audio_frame_size = initializeAVFormatContext(&oc_lq, native_output_file, &video_st_lq, &picture_lq, output_width_lq, output_height_lq, video_crf_lq, &last_pts_lq, &audio_st_lq, &samples_lq, audio_bitrate_lq);
+	int audio_frame_size = initializeAVFormatContext(&oc_lq, native_output_file, &video_st_lq, &picture_lq, output_width_lq, output_height_lq, video_crf_lq, &last_pts_lq, &video_frame_count_lq, &audio_st_lq, &samples_lq, audio_bitrate_lq);
 	return audio_frame_size;
 }
 
 int initializeHQAVFormatContext(jbyte* native_output_file){
 	//LOGI("initializeHQAVF with file: %s", native_output_file);
 	//int audio_frame_size = initializeAVFormatContext(oc_hq, native_output_file, video_st_hq, picture_hq, output_width_hq, output_height_hq, video_crf_hq, audio_st_hq, samples_hq, audio_bitrate_hq);
-	int audio_frame_size = initializeAVFormatContext(&oc_hq, native_output_file, &video_st_hq, &picture_hq, output_width_hq, output_height_hq, video_crf_hq, &last_pts_hq, &audio_st_hq, &samples_hq, audio_bitrate_hq);
+	int audio_frame_size = initializeAVFormatContext(&oc_hq, native_output_file, &video_st_hq, &picture_hq, output_width_hq, output_height_hq, video_crf_hq, &last_pts_hq, &video_frame_count_hq, &audio_st_hq, &samples_hq, audio_bitrate_hq);
 	if(!oc_hq)
 			LOGE("initializeLQAVFormatContext: oc_hq null after initializing");
 	//else
@@ -805,8 +809,10 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 
 	// If this is the first frame, set current and last frame ts
 	// equal to the current frame. Else the new last ts = old current ts
-	if(video_frame_count == 0)
-		first_video_frame_timestamp = (long) this_video_frame_timestamp;
+	if(video_frame_count_lq == 0)
+		first_video_frame_timestamp_lq = (long) this_video_frame_timestamp;
+	if(video_frame_count_hq == 0)
+		first_video_frame_timestamp_hq = (long) this_video_frame_timestamp;
 
 	current_video_frame_timestamp = (long) this_video_frame_timestamp;
 
@@ -840,9 +846,9 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		exit(1);
 	}
 	//LOGI("pre write LQ video frame");
-	write_video_frame(oc_lq, video_st_lq, picture_hq, &last_pts_lq);
+	write_video_frame(oc_lq, video_st_lq, picture_hq, &last_pts_lq, &video_frame_count_lq, first_video_frame_timestamp_lq);
 	//LOGI("post LQ, pre HQ video frame");
-	write_video_frame(oc_hq, video_st_hq, picture_hq, &last_pts_hq);
+	write_video_frame(oc_hq, video_st_hq, picture_hq, &last_pts_hq, &video_frame_count_hq, first_video_frame_timestamp_hq);
 	//LOGI("post write HQ video frame");
 
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);

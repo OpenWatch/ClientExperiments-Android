@@ -42,6 +42,7 @@ public class MainActivity extends Activity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		/*
 		if (Build.VERSION.SDK_INT >= 11) {
 			action_bar = this.getActionBar();
 			action_bar.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
@@ -50,6 +51,7 @@ public class MainActivity extends Activity {
 			action_bar.setTitle("");
 			//this.getActionBar().setTitle("OW Tech Demo");
 		}
+		*/
 
 		// Create our Preview view and set it as the content of our activity.
 		//mPreview = new CameraPreview(this, mCamera);
@@ -71,12 +73,13 @@ public class MainActivity extends Activity {
 				
 				if (av_recorder.is_recording) {
 					av_recorder.stopRecording();
+					/*
 					action_bar.setBackgroundDrawable(new ColorDrawable(Color.WHITE));
 					action_bar.setDisplayShowTitleEnabled(false);
 					action_bar.setDisplayShowTitleEnabled(true);
 					action_bar.setTitle("");
 					Log.i("ACTION_BAR","WHITE");
-					
+					*/
 				} else {
 					// Start camera preview
 					//FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
@@ -93,12 +96,13 @@ public class MainActivity extends Activity {
 												  (SurfaceView) MainActivity.this.findViewById(R.id.camera_surface_view),
 												  output_filename);
 						
+						/*
 						action_bar.setBackgroundDrawable(new ColorDrawable(Color.RED));
 						action_bar.setDisplayShowTitleEnabled(false);
 						action_bar.setDisplayShowTitleEnabled(true);
 						action_bar.setTitle("RECORDING");
 						Log.i("ACTION_BAR","RED");
-						
+						*/
 					} catch (Exception e) {
 						Log.e("Recorder init error", "Could not init av_recorder");
 						e.printStackTrace();
