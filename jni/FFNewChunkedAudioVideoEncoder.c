@@ -108,7 +108,7 @@ static AVStream *add_video_stream(AVFormatContext *oc, enum CodecID codec_id, in
 
     avcodec_get_context_defaults3(c, codec);
 
-    LOGI("start add_video_st fps: %d device_frame_rate: %d", c->time_base.den, device_frame_rate);
+    //LOGI("start add_video_st fps: %d device_frame_rate: %d", c->time_base.den, device_frame_rate);
 
     c->codec_id = codec_id;
 
@@ -190,7 +190,7 @@ static void open_video(AVFormatContext *oc, AVStream *st, AVFrame **out_picture)
 		//fprintf(stderr, "codec not found\n");
 		exit(1);
 	}
-	LOGI("open_video stream codec_id: %d", c->codec_id);
+	//LOGI("open_video stream codec_id: %d", c->codec_id);
     /* open the codec */
     if (avcodec_open2(c, codec, NULL) < 0) {
         LOGE("open_video could not open codec");
@@ -210,7 +210,7 @@ static void open_video(AVFormatContext *oc, AVStream *st, AVFrame **out_picture)
          * allocated with av_malloc). */
         video_outbuf_size = 200000;
         video_outbuf      = av_malloc(video_outbuf_size);
-        LOGI("av_malloc video_outbuf");
+        //LOGI("av_malloc video_outbuf");
     }
 
     /* Allocate the encoded raw picture. */
@@ -247,11 +247,12 @@ static void open_video(AVFormatContext *oc, AVStream *st, AVFrame **out_picture)
 static void write_video_frame(AVFormatContext *oc,  AVStream *st, AVFrame *picture, int *out_last_pts)
 {
 	int last_pts = *out_last_pts;
-	LOGI("write_video_frame get last_pts: %d", last_pts);
-	LOGI("write_video_frame sanity last_pts + 1: %d", last_pts + 1);
+	//LOGI("write_video_frame get last_pts: %d", last_pts);
+	//LOGI("write_video_frame sanity last_pts + 1: %d", last_pts + 1);
 
-	if(oc && st && picture)
-		LOGI("write_video_frame got input!");
+	if(oc && st && picture){
+		//LOGI("write_video_frame got input!");
+	}
 	else{
 		if(!oc)
 			LOGE("write_video_frame no oc");
@@ -304,13 +305,13 @@ static void write_video_frame(AVFormatContext *oc,  AVStream *st, AVFrame *pictu
 
         ret = av_interleaved_write_frame(oc, &pkt);
     } else {
-    	LOGI("video frame is YUV420P");
+    	//LOGI("video frame is YUV420P");
         /* encode the lq image */
         out_size = avcodec_encode_video(c, video_outbuf,
                                         video_outbuf_size, picture);
         /* If size is zero, it means the image was buffered. */
         if (out_size > 0) {
-        	LOGI("out_size > 0");
+        	//LOGI("out_size > 0");
             AVPacket pkt;
             av_init_packet(&pkt);
 
@@ -338,8 +339,8 @@ static void write_video_frame(AVFormatContext *oc,  AVStream *st, AVFrame *pictu
 			pkt.pts = proposed_pts;
 			//last_pts = proposed_pts;
 			*out_last_pts = proposed_pts;
-			LOGI("write_video_frame set last_pts: %d (lq: %d hq: %d)", proposed_pts, last_pts_lq, last_pts_hq);
-            LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
+			//LOGI("write_video_frame set last_pts: %d (lq: %d hq: %d)", proposed_pts, last_pts_lq, last_pts_hq);
+            //LOGI("VIDEO_PTS: %" PRId64 " DTS: %" PRId64 " duration %d", pkt.pts, pkt.dts, pkt.duration);
             /* Write the compressed frame to the media file. */
             ret = av_interleaved_write_frame(oc, &pkt); // Write LQ frame
 
@@ -361,12 +362,12 @@ static void close_video(AVFormatContext *oc, AVStream *st, AVFrame *picture)
     avcodec_close(st->codec);
     av_free(picture->data[0]);
     av_free(picture);
-    LOGI("close_video pre free tmp_picture");
+    //LOGI("close_video pre free tmp_picture");
     if (tmp_picture) {
         av_free(tmp_picture->data[0]);
         av_free(tmp_picture);
     }
-    LOGI("close_video post free tmp_picture");
+    //LOGI("close_video post free tmp_picture");
     if(video_outbuf_freed != 1){
     	av_free(video_outbuf); // we re use the video buffer for all streams, so it may be all ready freed at this point
     	video_outbuf_freed = 1;
@@ -393,7 +394,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id, in
         LOGE("add_audio_stream codec not found");
         exit(1);
     }
-    LOGI("add_audio_stream found codec_id: %d",codec_id);
+    //LOGI("add_audio_stream found codec_id: %d",codec_id);
     st = avformat_new_stream(oc, codec);
     if (!st) {
     	LOGE("add_audio_stream could not alloc stream");
@@ -412,7 +413,7 @@ static AVStream *add_audio_stream(AVFormatContext *oc, enum CodecID codec_id, in
     //c->bit_rate = 64000;
     c->sample_rate = audio_sample_rate;
     c->channels    = 1;
-    LOGI("add_audio_stream parameters: sample_fmt: %d bit_rate: %d sample_rate: %d", codec_audio_sample_fmt, bit_rate, audio_sample_rate);
+    //LOGI("add_audio_stream parameters: sample_fmt: %d bit_rate: %d sample_rate: %d", codec_audio_sample_fmt, bit_rate, audio_sample_rate);
     // some formats want stream headers to be separate
     if (oc->oformat->flags & AVFMT_GLOBALHEADER)
         c->flags |= CODEC_FLAG_GLOBAL_HEADER;
@@ -459,7 +460,7 @@ static void open_audio(AVFormatContext *oc, AVStream *st, int16_t **out_samples)
 		//fprintf(stderr, "codec not found\n");
 		exit(1);
 	}
-	LOGI("open_audio stream codec_id: %d", c->codec_id);
+	//LOGI("open_audio stream codec_id: %d", c->codec_id);
     /* open it */
     if (avcodec_open2(c, codec, NULL) < 0) {
         LOGE("open_audio could not open codec");
@@ -472,7 +473,7 @@ static void open_audio(AVFormatContext *oc, AVStream *st, int16_t **out_samples)
     else
         audio_input_frame_size = c->frame_size;
 
-    LOGI("open_audio frame_size: %d, audio_input_frame_size: %d", c->frame_size, audio_input_frame_size);
+    //LOGI("open_audio frame_size: %d, audio_input_frame_size: %d", c->frame_size, audio_input_frame_size);
     samples = av_malloc(audio_input_frame_size *
                         av_get_bytes_per_sample(c->sample_fmt) *
                         c->channels);
@@ -542,7 +543,7 @@ int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, 
 	// TODO: Can we do this only once?
 	/* Initialize libavcodec, and register all codecs and formats. */
 	av_register_all();
-	LOGI("initializeAVFC with filename: %s", output_filename);
+	//LOGI("initializeAVFC with filename: %s", output_filename);
 	if(!oc)
 		LOGI("initializeAVFC, oc is properly null");
 
@@ -557,8 +558,8 @@ int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, 
 		LOGE("Could not allocate output context");
 		exit(1);
 	}
-	else
-		LOGI("initializeAVFC, oc appears properly allocated");
+	//else
+		//LOGI("initializeAVFC, oc appears properly allocated");
 
 	//LOGI("avformat_alloc_output_context2");
 	fmt = oc->oformat;
@@ -593,15 +594,15 @@ int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, 
 
 	av_dump_format(oc, 0, output_filename, 1);
 
-	LOGI("open audio / video");
+	//LOGI("open audio / video");
 	/* open the output file, if needed */
 	if (!(fmt->flags & AVFMT_NOFILE)) {
 		char *error_buffer_ptr;
 		char error_buffer[90];
 		error_buffer_ptr = error_buffer;
-		LOGI("pre avio_open2");
+		//LOGI("pre avio_open2");
 		int error = avio_open2(&oc->pb, output_filename, AVIO_FLAG_WRITE, NULL, NULL);
-		LOGI("post avio_open2");
+		//LOGI("post avio_open2");
 		if ( error < 0) {
 			av_strerror (error, error_buffer_ptr, 90);
 			LOGE("Could not open %s. Error: %s", output_filename, error_buffer_ptr);
@@ -611,9 +612,9 @@ int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, 
 	}
 
 	/* Write the stream header, if any. */
-	LOGI("pre avformat_write_header");
+	//LOGI("pre avformat_write_header");
 	avformat_write_header(oc, NULL);
-	LOGI("avformat_write_header");
+	//LOGI("avformat_write_header");
 	//LOGI("end initializeAVFC: audio_input_frame_size: %d fps: %d", audio_input_frame_size, video_st->codec->time_base.den);
 
 	// Set results to output arguments
@@ -628,19 +629,19 @@ int initializeAVFormatContext(AVFormatContext **out_oc, jbyte *output_filename, 
 }
 
 int initializeLQAVFormatContext(jbyte* native_output_file){
-	LOGI("initializeLQAVF with file: %s", native_output_file);
+	//LOGI("initializeLQAVF with file: %s", native_output_file);
 	int audio_frame_size = initializeAVFormatContext(&oc_lq, native_output_file, &video_st_lq, &picture_lq, output_width_lq, output_height_lq, video_crf_lq, &last_pts_lq, &audio_st_lq, &samples_lq, audio_bitrate_lq);
 	return audio_frame_size;
 }
 
 int initializeHQAVFormatContext(jbyte* native_output_file){
-	LOGI("initializeHQAVF with file: %s", native_output_file);
+	//LOGI("initializeHQAVF with file: %s", native_output_file);
 	//int audio_frame_size = initializeAVFormatContext(oc_hq, native_output_file, video_st_hq, picture_hq, output_width_hq, output_height_hq, video_crf_hq, audio_st_hq, samples_hq, audio_bitrate_hq);
 	int audio_frame_size = initializeAVFormatContext(&oc_hq, native_output_file, &video_st_hq, &picture_hq, output_width_hq, output_height_hq, video_crf_hq, &last_pts_hq, &audio_st_hq, &samples_hq, audio_bitrate_hq);
 	if(!oc_hq)
 			LOGE("initializeLQAVFormatContext: oc_hq null after initializing");
-	else
-		LOGI("oc_hq appears properly allocated outside initializeAV.. scope");
+	//else
+		//LOGI("oc_hq appears properly allocated outside initializeAV.. scope");
 	return audio_frame_size;
 }
 
@@ -660,19 +661,19 @@ void finalizeAVFormatContext(AVFormatContext **out_oc, AVStream **out_video_st, 
 	int16_t *samples = *out_samples;
 
 
-	LOGI("finalizeAVFormatContext");
+	//LOGI("finalizeAVFormatContext");
 	av_write_trailer(oc);
-	LOGI("av_write_trailer");
+	//LOGI("av_write_trailer");
 
 	/* Close each codec. */
 	if (video_st)
 		close_video(oc, video_st, picture);
-	LOGI("close_video");
+	//LOGI("close_video");
 	if (audio_st)
 		close_audio(oc, audio_st, samples);
-	LOGI("close_audio");
+	//LOGI("close_audio");
 
-	LOGI("close audio / video");
+	//LOGI("close audio / video");
 
 	/* Free the streams. */
 	for (i = 0; i < oc->nb_streams; i++) {
@@ -680,18 +681,18 @@ void finalizeAVFormatContext(AVFormatContext **out_oc, AVStream **out_video_st, 
 		av_freep(&oc->streams[i]);
 	}
 
-	LOGI("free streams");
+	//LOGI("free streams");
 
 	if (!(fmt->flags & AVFMT_NOFILE))
 		/* Close the output file. */
 		avio_close(oc->pb);
 
-	LOGI("avio_close");
+	//LOGI("avio_close");
 
 	/* free the stream */
 	av_free(oc);
 
-	LOGI("av_free");
+	//LOGI("av_free");
 
 	*out_oc = NULL;
 	*out_video_st = NULL;
@@ -739,9 +740,10 @@ void testAudioCodec(){
 					//exit(1);
 			}
 		}
-	else{
+/*	else{
 		LOGI("testAudioCodec opened!");
 	}
+*/
 }
 
 ////////////////////////////////////////////
@@ -776,9 +778,9 @@ int Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_interna
 
 	//allocRecordingStructs(); // alloc structs that need only be done once per recording
 
-	LOGI("pre initializeHQAVFC");
+	//LOGI("pre initializeHQAVFC");
 	int audio_frame_size = initializeHQAVFormatContext(native_output_file_hq);
-	LOGI("pre initializeLQAVFC");
+	//LOGI("pre initializeLQAVFC");
 	initializeLQAVFormatContext(native_output_file_lq1);
 	//int audio_frame_size = picture_hqFormatContext(oc_hq, native_output_file_hq, video_st_hq, picture_hq, output_width_hq, output_height_hq, video_crf_hq, audio_st_hq, samples_hq, audio_bitrate_hq);
 	//initializeAVFormatContext(oc_lq, native_output_file_lq1, video_st_lq, picture_lq, output_width_lq, output_height_lq, video_crf_lq, audio_st_lq, samples_lq, audio_bitrate_lq);
@@ -809,7 +811,7 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 	current_video_frame_timestamp = (long) this_video_frame_timestamp;
 
 	int x,y; // audio, video loop counters
-	LOGI("pre copy HQ frame");
+	//LOGI("pre copy HQ frame");
 	// write HQ video_frame_data to AVFrame
 	if(video_st_hq){
 		c = video_st_hq->codec; // don't need to do this each frame?
@@ -837,11 +839,11 @@ void Java_net_openwatch_openwatch2_recorder_FFNewChunkedAudioVideoEncoder_proces
 		LOGE("HQ and LQ videos have different dimensions. Case not yet supported");
 		exit(1);
 	}
-	LOGI("pre write LQ video frame");
+	//LOGI("pre write LQ video frame");
 	write_video_frame(oc_lq, video_st_lq, picture_hq, &last_pts_lq);
-	LOGI("post LQ, pre HQ video frame");
+	//LOGI("post LQ, pre HQ video frame");
 	write_video_frame(oc_hq, video_st_hq, picture_hq, &last_pts_hq);
-	LOGI("post write HQ video frame");
+	//LOGI("post write HQ video frame");
 
 	(*env)->ReleaseByteArrayElements(env, video_frame_data, native_video_frame_data, 0);
 
